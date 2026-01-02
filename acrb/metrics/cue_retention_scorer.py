@@ -69,7 +69,7 @@ Output strict JSON:
     
     def __init__(
         self,
-        vlm_model: str = "qwen3-vl",
+        vlm_model: str = "qwen2.5-vl-7b",
         api_key: Optional[str] = None,
         use_local: bool = True
     ):
@@ -105,12 +105,12 @@ Output strict JSON:
     def _init_qwen_local(self):
         """Initialize local Qwen VLM."""
         try:
-            from transformers import AutoModelForVision2Seq, AutoProcessor
+            from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
             import torch
             
-            model_name = "Qwen/Qwen3-VL-8B-Instruct"
+            model_name = "Qwen/Qwen2.5-VL-7B-Instruct"
             self.processor = AutoProcessor.from_pretrained(model_name)
-            self.model = AutoModelForVision2Seq.from_pretrained(
+            self.model = Qwen2VLForConditionalGeneration.from_pretrained(
                 model_name,
                 torch_dtype=torch.bfloat16,
                 device_map="auto"
@@ -296,7 +296,7 @@ Output strict JSON:
 
 def main():
     """Example usage."""
-    scorer = CueRetentionScorer(vlm_model="qwen3-vl", use_local=False)
+    scorer = CueRetentionScorer(vlm_model="qwen2.5-vl-7b", use_local=False)
     
     # Example (would need actual image)
     print("CueRetentionScorer initialized")

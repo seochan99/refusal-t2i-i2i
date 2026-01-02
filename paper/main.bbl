@@ -1,5 +1,9 @@
 \begin{thebibliography}{}
 
+\bibitem[\protect\citeauthoryear{{Alibaba Qwen Team}}{2025}]{qwenimageedit2511}
+{Alibaba Qwen Team}.
+\newblock Qwen-image-edit-2511: Enhanced image editing with integrated lora, 2025.
+
 \bibitem[\protect\citeauthoryear{{Black Forest Labs}}{2024}]{fluxkontext2024}
 {Black Forest Labs}.
 \newblock Flux.1 kontext: Flow matching for in-context image generation and editing, 2024.
@@ -8,6 +12,11 @@
 Tim Brooks, Aleksander Holynski, and Alexei~A Efros.
 \newblock Instructpix2pix: Learning to follow image editing instructions.
 \newblock In {\em CVPR}, 2023.
+
+\bibitem[\protect\citeauthoryear{Buolamwini and Gebru}{2018}]{buolamwini2018gender}
+Joy Buolamwini and Timnit Gebru.
+\newblock Gender shades: Intersectional accuracy disparities in commercial gender classification.
+\newblock In {\em Proceedings of Machine Learning Research (FAT*)}, volume~81, pages 77--91, 2018.
 
 \bibitem[\protect\citeauthoryear{Cheng \bgroup \em et al.\egroup }{2025}]{cheng2025overt}
 Ziheng Cheng, Yixiao Huang, Haoran Li, Yue Zhang, and Junfeng Wen.
@@ -18,6 +27,10 @@ Ziheng Cheng, Yixiao Huang, Haoran Li, Yue Zhang, and Junfeng Wen.
 Jiaming Cui, Hongzhan Yu, Jiachen Dong, Junyi Ye, and Yue Zhang.
 \newblock Or-bench: An over-refusal benchmark for large language models.
 \newblock In {\em NeurIPS Datasets and Benchmarks}, 2024.
+
+\bibitem[\protect\citeauthoryear{{European Parliament and Council}}{2024}]{euaiact2024}
+{European Parliament and Council}.
+\newblock Regulation (eu) 2024/1689 on artificial intelligence (ai act), 2024.
 
 \bibitem[\protect\citeauthoryear{Jin \bgroup \em et al.\egroup }{2024}]{jin2024selective}
 Xiaoping Jin, Yang Liu, and Hao Zhang.
@@ -33,5 +46,9 @@ Hao Li, Linxuan Chen, and Yue Zhang.
 Alexandra~Sasha Luccioni, Christopher Akiki, Margaret Mitchell, and Yacine Jernite.
 \newblock Stable bias: Evaluating societal representations in diffusion models.
 \newblock {\em NeurIPS}, 2024.
+
+\bibitem[\protect\citeauthoryear{{The White House}}{2023}]{bideno2023}
+{The White House}.
+\newblock Executive order 14110: Safe, secure, and trustworthy development and use of artificial intelligence, 2023.
 
 \end{thebibliography}

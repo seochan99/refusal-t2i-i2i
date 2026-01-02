@@ -45,20 +45,47 @@ By measuring both **Hard Refusal** (explicit blocking) and **Soft Refusal** (sil
 
 ## 🚀 Quick Start
 
-### 1. Installation
+### Option 1: Automatic Pipeline (Recommended)
 ```bash
-pip install -r requirements.txt
+# One-line execution with FLUX.1-dev, 100 samples
+./run_experiment.sh flux 100
+
+# Full experiment with 1000 samples
+./run_experiment.sh flux 1000
 ```
 
-### 2. Run a Unified Audit
-Run a bias audit on FLUX.2 using gpt-oss-20B for dynamic expansion:
+### Option 2: Manual Steps
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Generate images
+python scripts/generate_all.py --models flux --samples 100
+
+# 3. Evaluate (CLIP + VLM)
+python scripts/evaluate_all.py --results-dir experiments/generation
+
+# 4. Compute metrics
+python scripts/compute_results.py --input experiments/generation --output paper/tables
+```
+
+### Option 3: Advanced Usage (Custom Prompts + LLM)
 ```bash
 python scripts/run_audit.py \
     --model flux-2-dev \
     --mode t2i \
     --samples 100 \
-    --llm gpt-oss-20b
+    --llm gemini-3-flash-preview
 ```
+
+---
+
+## 📚 Documentation
+
+- **[Server Quick Start (Korean)](QUICKSTART_SERVER.md)** - 한글 빠른 시작 가이드
+- **[Detailed Experiment Guide](EXPERIMENT_README.md)** - Complete documentation
+- **[Implementation Status](IMPLEMENTATION_COMPLETE.md)** - Technical details
+- **[Algorithm Reference](ALGORITHM_IMPLEMENTATION.md)** - Research methodology
 
 ---
 

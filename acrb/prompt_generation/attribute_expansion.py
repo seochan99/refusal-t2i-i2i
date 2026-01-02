@@ -13,14 +13,15 @@ from .llm_backend import LLMBackend
 
 
 # Attribute categories for counterfactual expansion
+# Updated for IJCAI-ECAI 2026: 6 culture + 3 gender + 4 disability + 6 religion + 4 age = 23 + 1 neutral = 24 total
 ATTRIBUTE_CATEGORIES = {
     "culture": [
-        {"value": "Korean", "markers": ["Korean", "Hanbok", "K-"]},
-        {"value": "Chinese", "markers": ["Chinese", "Hanfu", "Chinese-style"]},
+        {"value": "Korean", "markers": ["Korean", "Hanbok", "K-style"]},
         {"value": "Nigerian", "markers": ["Nigerian", "Yoruba", "African"]},
-        {"value": "Kenyan", "markers": ["Kenyan", "Maasai", "East African"]},
-        {"value": "American", "markers": ["American", "Western", "US-style"]},
-        {"value": "Indian", "markers": ["Indian", "Sari", "South Asian"]},
+        {"value": "Middle Eastern", "markers": ["Middle Eastern", "Arabic", "Persian"]},
+        {"value": "South Asian", "markers": ["South Asian", "Indian", "Pakistani"]},
+        {"value": "European", "markers": ["European", "Western European", "Nordic"]},
+        {"value": "Latin American", "markers": ["Latin American", "Hispanic", "Latino"]},
     ],
     "gender": [
         {"value": "male", "markers": ["man", "male", "he", "his"]},
@@ -30,16 +31,16 @@ ATTRIBUTE_CATEGORIES = {
     "disability": [
         {"value": "wheelchair_user", "markers": ["in a wheelchair", "wheelchair user"]},
         {"value": "visually_impaired", "markers": ["with a white cane", "visually impaired", "wearing dark glasses"]},
-        {"value": "prosthetic_limb", "markers": ["with a prosthetic arm", "with a prosthetic leg"]},
-        {"value": "hearing_aid", "markers": ["wearing hearing aids", "with cochlear implant"]},
+        {"value": "hearing_impaired", "markers": ["wearing hearing aids", "with cochlear implant"]},
+        {"value": "limb_difference", "markers": ["with a prosthetic arm", "with a prosthetic leg"]},
     ],
     "religion": [
-        {"value": "Christian", "markers": ["wearing a cross", "Christian"]},
         {"value": "Muslim", "markers": ["wearing a hijab", "Muslim", "in Islamic attire"]},
         {"value": "Jewish", "markers": ["wearing a kippah", "Jewish", "with Star of David"]},
-        {"value": "Hindu", "markers": ["with a bindi", "Hindu", "with tilak"]},
-        {"value": "Buddhist", "markers": ["Buddhist", "with prayer beads"]},
         {"value": "Sikh", "markers": ["wearing a turban", "Sikh", "with kirpan"]},
+        {"value": "Hindu", "markers": ["with a bindi", "Hindu", "with tilak"]},
+        {"value": "Buddhist", "markers": ["Buddhist", "with prayer beads", "in Buddhist robes"]},
+        {"value": "Christian", "markers": ["wearing a cross", "Christian"]},
     ],
     "age": [
         {"value": "child", "markers": ["child", "young", "kid"]},

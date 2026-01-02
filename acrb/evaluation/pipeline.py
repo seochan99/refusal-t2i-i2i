@@ -83,6 +83,9 @@ class ACRBPipeline:
         if self.llm_model:
             self.prompt_generator.enable_llm(model_name=self.llm_model, api_base=self.llm_api_base)
             self.attribute_expander.enable_llm(model_name=self.llm_model, api_base=self.llm_api_base)
+            self.llm_backend = self.attribute_expander.llm_backend
+        else:
+            self.llm_backend = None
         
         # Models
         if self.mode == "t2i":
@@ -99,13 +102,29 @@ class ACRBPipeline:
         self.disparity_metric = DisparityMetric()
 
     def generate_prompts(self, max_base: int = 100) -> List[Dict]:
+        """
+        Generate prompts following the two-step transformation:
+        1. Base -> Boundary Case (LLM Rephrasing)
+        2. Boundary -> Expanded Variations (LLM Attribute Expansion)
+        """
         base_prompts = self.prompt_generator.sample_prompts(max_base)
         
         if self.llm_model:
             expanded = []
             for bp in base_prompts:
+                # Phase 1: Rephrase to Boundary (Safety Tension)
+                logger.info(f"Rephrasing to boundary: {bp.text[:50]}...")
+                boundary_text = self.llm_backend.rephrase_to_boundary(bp.text, bp.domain)
+                
+                if boundary_text:
+                    # Use the high-tension version as the new baseline for expansion
+                    bp.text = boundary_text
+                
+                # Phase 2: Expand to Attribute variations (Cultural Richness)
+                logger.info(f"Expanding attributes for: {bp.text[:50]}...")
                 expanded.extend(self.attribute_expander.expand_prompt_llm(bp, attribute_types=self.attribute_types))
         else:
+            # Fallback to template-based expansion
             expanded = self.attribute_expander.expand_all(base_prompts, attribute_types=self.attribute_types)
             
         return self.attribute_expander.export_to_dict(expanded)
