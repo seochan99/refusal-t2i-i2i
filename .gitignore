@@ -11,3 +11,10 @@ venv/
 *.out
 *.synctex.gz
 *.toc
+
+# Experiment results and generated data
+experiments/results/
+experiments/images/
+experiments/evaluation/
+checkpoints/
+logs/*.log
