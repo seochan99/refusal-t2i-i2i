@@ -2,10 +2,12 @@
 
 from .base_prompts import BasePromptGenerator, SAFETY_DOMAINS
 from .attribute_expansion import AttributeExpander, ATTRIBUTE_CATEGORIES
+from .llm_backend import LLMBackend
 
 __all__ = [
     "BasePromptGenerator",
     "SAFETY_DOMAINS",
-    "AttributeExpander", 
+    "AttributeExpander",
     "ATTRIBUTE_CATEGORIES",
+    "LLMBackend",
 ]
