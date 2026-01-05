@@ -15,7 +15,7 @@ set -euo pipefail
 #-------------------------------------------------------------------------------
 # Configuration
 #-------------------------------------------------------------------------------
-PROJECT_ROOT="/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal"
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="${PROJECT_ROOT}/logs"
 CHECKPOINT_DIR="${PROJECT_ROOT}/checkpoints"
 DATA_DIR="${PROJECT_ROOT}/data"

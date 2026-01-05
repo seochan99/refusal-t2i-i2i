@@ -16,7 +16,7 @@ set -euo pipefail
 # Configuration
 #-------------------------------------------------------------------------------
 
-PROJECT_ROOT="/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal"
+PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 PYTHON_VERSION="3.10"
 VENV_NAME="acrb_env"
 VENV_PATH="${PROJECT_ROOT}/${VENV_NAME}"
@@ -441,6 +441,9 @@ final_check() {
     # Activate environment
     source "${VENV_PATH}/bin/activate"
 
+    # Export PROJECT_ROOT for Python script
+    export PROJECT_ROOT="${PROJECT_ROOT}"
+
     # Run verification script
     python3 << 'EOF'
 import sys
@@ -490,7 +493,10 @@ except Exception as e:
 
 # Check 5: ACRB package
 try:
-    sys.path.insert(0, "/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal")
+    import sys
+    import os
+    project_root = os.environ.get('PROJECT_ROOT', '${PROJECT_ROOT}')
+    sys.path.insert(0, project_root)
     import acrb
     print(f"[OK] ACRB package")
     checks_passed += 1
