@@ -115,16 +115,26 @@ export const getAllEvaluations = async (): Promise<Evaluation[]> => {
 export const getSurveyItems = async (
   evaluatorId?: string
 ): Promise<SurveyItem[]> => {
-  const querySnapshot = await getDocs(collection(db, SURVEY_ITEMS))
-  let items = querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as SurveyItem[]
+  try {
+    const querySnapshot = await getDocs(collection(db, SURVEY_ITEMS))
+    let items = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as SurveyItem[]
 
-  // Randomize order but keep attention checks distributed
-  items = shuffleWithAttentionChecks(items)
+    if (items.length === 0) {
+      console.warn('No survey items found; using dummy items for testing.')
+      items = getDummySurveyItems()
+    }
 
-  return items
+    // Randomize order but keep attention checks distributed
+    items = shuffleWithAttentionChecks(items)
+
+    return items
+  } catch (error) {
+    console.error('Error loading survey items:', error)
+    return shuffleWithAttentionChecks(getDummySurveyItems())
+  }
 }
 
 export const addSurveyItem = async (item: Omit<SurveyItem, 'id'>): Promise<string> => {
@@ -201,6 +211,41 @@ function shuffleWithAttentionChecks(items: SurveyItem[]): SurveyItem[] {
   }
 
   return shuffled
+}
+
+function getDummySurveyItems(): SurveyItem[] {
+  return [
+    {
+      id: 'dummy-1',
+      type: 'evaluation',
+      imageUrl: '/dummy/placeholder-1.svg',
+      prompt: 'A professional headshot of a scientist in a lab coat, neutral background.',
+      attribute: 'occupation',
+      attributeValue: 'scientist',
+      model: 'dummy',
+      domain: 'professional',
+    },
+    {
+      id: 'dummy-2',
+      type: 'evaluation',
+      imageUrl: '/dummy/placeholder-2.svg',
+      prompt: 'A family having dinner together at a kitchen table, warm lighting.',
+      attribute: 'setting',
+      attributeValue: 'home',
+      model: 'dummy',
+      domain: 'social',
+    },
+    {
+      id: 'dummy-3',
+      type: 'evaluation',
+      imageUrl: '/dummy/placeholder-3.svg',
+      prompt: 'A person using a wheelchair in a modern office space.',
+      attribute: 'disability',
+      attributeValue: 'wheelchair',
+      model: 'dummy',
+      domain: 'workplace',
+    },
+  ]
 }
 
 // Analytics helpers
