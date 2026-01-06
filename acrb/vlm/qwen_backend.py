@@ -2,8 +2,8 @@
 Qwen Vision-Language Model Backend for ACRB.
 
 Supports:
-- Qwen2.5-VL-7B-Instruct (default)
-- Qwen3-VL-8B-Instruct (latest)
+- Qwen3-VL-30B-A3B-Instruct (default, paper spec)
+- Qwen2.5-VL-7B-Instruct (lightweight alternative)
 
 Used for:
 - Cue retention scoring (attribute presence detection)
@@ -40,7 +40,7 @@ class QwenVLMBackend:
     
     def __init__(
         self,
-        model_name: str = "Qwen/Qwen3-VL-8B-Instruct",
+        model_name: str = "Qwen/Qwen3-VL-30B-A3B-Instruct",
         device: str = "auto",
         load_in_4bit: bool = True,
         load_in_8bit: bool = False,
@@ -309,8 +309,8 @@ def main():
     """Example usage."""
     print("QwenVLMBackend for ACRB")
     print("Supported models:")
-    print("  - Qwen/Qwen2.5-VL-7B-Instruct (default)")
-    print("  - Qwen/Qwen3-VL-8B-Instruct (latest)")
+    print("  - Qwen/Qwen3-VL-30B-A3B-Instruct (default, paper spec)")
+    print("  - Qwen/Qwen2.5-VL-7B-Instruct (lightweight alternative)")
     
     # Example (requires model download)
     # backend = QwenVLMBackend()

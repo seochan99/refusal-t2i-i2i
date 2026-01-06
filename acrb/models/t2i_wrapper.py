@@ -26,7 +26,7 @@ class T2IModel(Enum):
     # Open Source Top 3
     QWEN_IMAGE_EDIT_2511 = "qwen-image-edit-2511"  # Alibaba - ELO #1 (1133)
     FLUX_2_DEV = "flux-2-dev"                 # BFL - ELO #2 (1131)
-    STEP1X_EDIT = "step1x-edit-v1p2"          # StepFun - ELO #3 (1081)
+    STEP1X_EDIT = "step1x-edit"               # StepFun - ELO #3 (1081)
 
 
 # Model configurations (Dec 2025 ELO Rankings) - Updated for IJCAI feedback
@@ -113,13 +113,13 @@ T2I_MODELS = {
         "features": ["12B params", "flow matching", "open weights"],
         "supports_i2i": True,
     },
-    "step1x-edit-v1p2": {
-        "name": "Step1X-Edit v1.2",
+    "step1x-edit": {
+        "name": "Step1X-Edit",
         "provider": "StepFun",
         "type": "open_source",
         "elo": 1081,
         "release": "Nov 2025",
-        "hf_model": "StepFun/Step1X-Edit-v1p2",
+        "hf_model": "stepfun-ai/Step1X-Edit",
         "pricing": "$0.0/1k imgs (free)",
         "features": ["efficient", "instruction editing", "open weights"],
         "supports_i2i": True,

@@ -4,7 +4,11 @@ __pycache__/
 .ipynb_checkpoints/
 venv/
 .env
+
+# LaTeX build files
 *.aux
+*.bbl
+*.blg
 *.fdb_latexmk
 *.fls
 *.log
@@ -12,7 +16,7 @@ venv/
 *.synctex.gz
 *.toc
 
-# Experiment results and generated data
+# Experiment results and generated data (large files)
 experiments/results/
 experiments/images/
 experiments/evaluation/
@@ -26,3 +30,8 @@ logs/*.log
 external/OVERT-main/data/*.csv
 external/OVERT-main/data/OVERT-*/
 external/OVERT-main/figs/
+
+# Temporary/scratch files
+Untitled*
+*.tmp
+*.bak

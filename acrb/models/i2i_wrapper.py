@@ -22,7 +22,7 @@ class I2IModel(Enum):
     # Open Source Top 3 for I2I
     QWEN_IMAGE_EDIT_2511 = "qwen-image-edit-2511"   # Alibaba - ELO #1 (1133)
     FLUX_2_DEV = "flux-2-dev"                        # BFL - ELO #2 (1131)
-    STEP1X_EDIT = "step1x-edit-v1p2"                 # StepFun - ELO #3 (1081)
+    STEP1X_EDIT = "step1x-edit"                      # StepFun - ELO #3 (1081)
     # Reference model
     INSTRUCT_PIX2PIX = "instruct-pix2pix"           # Basline
 
@@ -107,13 +107,13 @@ I2I_MODELS = {
             "open weights",
         ],
     },
-    "step1x-edit-v1p2": {
-        "name": "Step1X-Edit v1.2",
+    "step1x-edit": {
+        "name": "Step1X-Edit",
         "provider": "StepFun",
         "type": "open_source",
         "elo": 1081,
         "release": "Nov 2025",
-        "hf_model": "StepFun/Step1X-Edit-v1p2",
+        "hf_model": "stepfun-ai/Step1X-Edit",
         "pricing": "$0.0/1k imgs (free)",
         "features": [
             "efficient editing",

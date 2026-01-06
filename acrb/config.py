@@ -103,17 +103,6 @@ MODELS = {
             'refusal_threshold': 0.68,
             'hf_model': 'stabilityai/stable-diffusion-3.5-large',
         },
-        'qwen_2_5_vl': {
-            'name': 'Qwen 2.5 VL',
-            'provider': 'Alibaba',
-            'type': ModelType.OPEN_SOURCE,
-            'elo': 1100,
-            'release': 'Nov 2025',
-            'policy': SafetyPolicy.REGIONAL,
-            'i2i_support': False,
-            'refusal_threshold': 0.68,
-            'hf_model': 'Qwen/Qwen2.5-VL-7B-Instruct',
-        },
         'step1x_edit': {
             'name': 'Step1X-Edit',
             'provider': 'StepFun',
@@ -123,7 +112,7 @@ MODELS = {
             'policy': SafetyPolicy.REGIONAL,
             'i2i_support': True,
             'refusal_threshold': 0.68,
-            'hf_model': 'StepFun/Step1X-Edit-v1p2',
+            'hf_model': 'stepfun-ai/Step1X-Edit',
         },
     }
 }
@@ -274,7 +263,7 @@ VLM_CONFIG = {
 
     'models': {
         'qwen3-vl': {
-            'model_id': 'Qwen/Qwen3-VL-8B-Instruct',
+            'model_id': 'Qwen/Qwen3-VL-30B-A3B-Instruct',
             'type': 'local',
             'weight': 1.0,
         },
