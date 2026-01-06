@@ -1,32 +1,84 @@
 #!/usr/bin/env python3
 """
-ACRB Image Generation Script - December 2025
+CLI wrapper for ACRB image generation.
 
-Generates images using 6 representative models with DISTINCT SAFETY ALIGNMENT
-policies for measuring Attribute-Conditioned Refusal Bias (ACRB).
+Thin wrapper around acrb.models.ACRBImageGenerator.
+See acrb/models/generation.py for actual implementation.
+"""
 
-Model Selection Rationale:
-  - Goal: Compare refusal patterns across different safety philosophies
-  - Excluded: Turbo/Flash variants (speed-optimized, same safety policy)
-  - Included: Models with meaningfully different content moderation approaches
+import argparse
+import sys
+import json
+from pathlib import Path
 
-6 Representative Models:
-  API (Closed Source):
-    1. GPT-Image-1.5 (OpenAI) - Most conservative, aggressive filtering
-    2. Imagen 3 / Nano Banana Pro (Google) - Moderate-conservative
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-  Local (Open Source):
-    3. FLUX.2 [dev] (BFL) - Permissive, minimal restrictions
-    4. Qwen-Image-2512 (Alibaba) - Chinese regulatory alignment
-    5. SD 3.5 Large (Stability AI) - Community-governed
-    6. Step1X-Edit (StepFun) - I2I specialist, Chinese ecosystem
+from acrb.models import ACRBImageGenerator
+from acrb.config import load_config
 
-Usage:
-    # Open source only (free, requires GPU)
-    python scripts/generate_all.py --models flux2 qwen-2512 sd35 step1x --samples 100
 
-    # With API models (paid)
-    python scripts/generate_all.py --models gpt-image imagen3 --samples 100
+def main():
+    """CLI entry point for ACRB image generation."""
+    parser = argparse.ArgumentParser(description="Generate images with ACRB models")
+    parser.add_argument("--models", nargs="+", required=True,
+                       help="Models to use (e.g., flux2, sd35)")
+    parser.add_argument("--prompts", type=str, required=True,
+                       help="Path to prompts JSON file")
+    parser.add_argument("--output", type=str, required=True,
+                       help="Output directory")
+    parser.add_argument("--modes", nargs="+", default=["t2i"],
+                       choices=["t2i", "i2i"],
+                       help="Generation modes")
+    parser.add_argument("--batch-size", type=int, default=4,
+                       help="Batch size for generation")
+
+    args = parser.parse_args()
+
+    # Load config
+    config = load_config()
+
+    # Initialize generator
+    generator = ACRBImageGenerator(config)
+
+    # Generate dataset
+    prompts_file = Path(args.prompts)
+    output_dir = Path(args.output)
+
+    print(f"Generating images with models: {args.models}")
+    print(f"Modes: {args.modes}")
+    print(f"Prompts: {prompts_file}")
+    print(f"Output: {output_dir}")
+
+    summary = generator.generate_dataset(
+        prompts_file=prompts_file,
+        models=args.models,
+        modes=args.modes,
+        output_dir=output_dir
+    )
+
+    # Print summary
+    print(f"\n{'='*60}")
+    print("GENERATION SUMMARY")
+    print(f"{'='*60}")
+
+    for key, result in summary['results'].items():
+        print(f"\n{key}:")
+        print(f"  Generated: {result['generated']}")
+        print(f"  Refusals: {result['refusals']}")
+        print(f"  Errors: {result['errors']}")
+
+    # Save summary
+    summary_file = output_dir / "generation_summary.json"
+    with open(summary_file, "w") as f:
+        json.dump(summary, f, indent=2)
+
+    print(f"\nSummary saved to: {summary_file}")
+    print(f"{'='*60}\n")
+
+
+if __name__ == "__main__":
+    main()
 
     # Full pipeline (all 6 models)
     python scripts/generate_all.py --models gpt-image imagen3 flux2 qwen-2512 sd35 step1x
