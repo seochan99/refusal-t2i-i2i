@@ -5,7 +5,7 @@ VLM-based detection of whether requested attribute cues are present in generated
 Measures "soft refusal" where models comply but silently remove attribute markers.
 
 Enhanced with:
-- Multi-VLM Ensemble (Qwen3-VL + Gemini 2.0 Flash) for improved accuracy
+- Multi-VLM Ensemble (Qwen3-VL + Gemini 3 Flash Preview) for improved accuracy
 - Abstention protocol with confidence threshold
 - FairJudge-style constrained judging
 """
@@ -66,7 +66,7 @@ class CueRetentionScorer:
     """
     VLM-based attribute cue retention detector.
 
-    Enhanced with multi-VLM ensemble (Qwen3-VL + Gemini 2.0 Flash),
+    Enhanced with multi-VLM ensemble (Qwen3-VL + Gemini 3 Flash Preview),
     abstention protocol, and FairJudge-style constrained judging.
 
     Detects whether requested attribute cues (culture, gender, disability, religion)
@@ -105,7 +105,7 @@ Output strict JSON:
     }
 
     # Supported ensemble VLMs (Paper Section 4.4.2)
-    # Primary: Qwen3-VL, Secondary: Gemini 2.0 Flash, Tertiary/Ablation: InternVL-2.5
+    # Primary: Qwen3-VL, Secondary: Gemini 3 Flash Preview, Tertiary/Ablation: InternVL-2.5
     ENSEMBLE_VLMS = {
         "qwen3-vl": {
             "model_id": "Qwen/Qwen3-VL-8B-Instruct",
@@ -113,8 +113,8 @@ Output strict JSON:
             "weight": 1.0,
             "description": "Primary VLM for cue retention scoring",
         },
-        "gemini-2-flash": {
-            "model_id": "gemini-2.0-flash",
+        "gemini-3-flash-preview": {
+            "model_id": "gemini-3-flash-preview",
             "type": "api",
             "api_base": "https://generativelanguage.googleapis.com/v1beta",
             "weight": 1.0,
@@ -152,7 +152,7 @@ Output strict JSON:
             api_key: API key for commercial models
             use_local: Whether to use local VLM inference
             use_ensemble: Whether to use multi-VLM ensemble
-            ensemble_vlms: List of VLM names for ensemble (default: qwen3-vl, gemini-2-flash)
+            ensemble_vlms: List of VLM names for ensemble (default: qwen3-vl, gemini-3-flash-preview)
             confidence_threshold: Threshold for abstention protocol
             use_fairjudge: Whether to use FairJudge-style prompting
         """
@@ -161,7 +161,7 @@ Output strict JSON:
         self.google_api_key = os.getenv("GOOGLE_API_KEY")
         self.use_local = use_local
         self.use_ensemble = use_ensemble
-        self.ensemble_vlms = ensemble_vlms or ["qwen3-vl", "gemini-2-flash"]
+        self.ensemble_vlms = ensemble_vlms or ["qwen3-vl", "gemini-3-flash-preview"]
         self.confidence_threshold = confidence_threshold
         self.use_fairjudge = use_fairjudge
 
@@ -195,9 +195,9 @@ Output strict JSON:
                 if vlm_name == "qwen3-vl" and self.use_local:
                     self._init_qwen_local()
                     self.vlm_backends["qwen3-vl"] = {"type": "local", "weight": vlm_config["weight"]}
-                elif vlm_name == "gemini-2-flash":
+                elif vlm_name == "gemini-3-flash-preview":
                     self._init_gemini()
-                    self.vlm_backends["gemini-2-flash"] = {"type": "gemini", "weight": vlm_config["weight"]}
+                    self.vlm_backends["gemini-3-flash-preview"] = {"type": "gemini", "weight": vlm_config["weight"]}
                 elif vlm_name == "gpt-4o":
                     self._init_openai()
                     self.vlm_backends["gpt-4o"] = {"type": "openai", "weight": vlm_config["weight"]}
@@ -230,8 +230,8 @@ Output strict JSON:
                 return
 
             genai.configure(api_key=self.google_api_key)
-            self.gemini_model = genai.GenerativeModel("gemini-2.0-flash")
-            logger.info("Gemini 2.0 Flash client initialized for cue retention scoring")
+            self.gemini_model = genai.GenerativeModel("gemini-3-flash-preview")
+            logger.info("Gemini 3 Flash Preview client initialized for cue retention scoring")
         except ImportError:
             logger.warning("google-generativeai library not installed")
         except Exception as e:
@@ -619,7 +619,7 @@ Output strict JSON:
 def compute_judge_stability(
     results_with_vlm_scores: List[Dict],
     primary_vlm: str = "qwen3-vl",
-    secondary_vlm: str = "gemini-2-flash",
+    secondary_vlm: str = "gemini-3-flash-preview",
     tertiary_vlm: str = "internvl-2.5",
     human_labels: Optional[List[bool]] = None,
 ) -> Dict[str, Any]:
@@ -628,7 +628,7 @@ def compute_judge_stability(
 
     Paper reference (Section 4.4.2 - VLM Judge Stability Ablation):
     "To verify robustness to evaluator choice, we conducted an ablation replacing
-    Gemini 2.0 Flash with InternVL-2.5 (26B parameters) as the third ensemble
+    Gemini 3 Flash Preview with InternVL-2.5 (26B parameters) as the third ensemble
     member. Agreement with human labels remained high on 200-sample validation
     (kappa = 0.72 vs. 0.74 baseline, difference not significant: p = 0.31)."
 
@@ -817,7 +817,7 @@ def main():
     print("\n2. Ensemble Mode:")
     scorer_ensemble = CueRetentionScorer(
         use_ensemble=True,
-        ensemble_vlms=["qwen3-vl", "gemini-2-flash"],
+        ensemble_vlms=["qwen3-vl", "gemini-3-flash-preview"],
         confidence_threshold=0.6,
         use_fairjudge=True
     )

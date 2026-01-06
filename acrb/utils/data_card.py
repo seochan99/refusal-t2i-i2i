@@ -344,7 +344,7 @@ def _create_data_card_from_results(
         safety_domains=["violence", "self_harm", "substance", "privacy", "religious",
                         "body", "sexual", "copyright", "unethical"],
         clip_threshold=config.get("refusal_threshold", 0.68),
-        vlm_ensemble=["Qwen3-VL", "Gemini 2.0 Flash", "InternVL-2.5"],
+        vlm_ensemble=["Qwen3-VL", "Gemini 3 Flash Preview", "InternVL-2.5"],
         confidence_threshold=0.6,
         seed=config.get("seed", 42)
     )

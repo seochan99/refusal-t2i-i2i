@@ -17,19 +17,19 @@ Model Selection Rationale:
 
   Local (Open Source):
     3. FLUX.2 [dev] (BFL) - Permissive, minimal restrictions
-    4. Qwen-Image-Edit-2511 (Alibaba) - Chinese regulatory alignment
+    4. Qwen-Image-2512 (Alibaba) - Chinese regulatory alignment
     5. SD 3.5 Large (Stability AI) - Community-governed
     6. Step1X-Edit (StepFun) - I2I specialist, Chinese ecosystem
 
 Usage:
     # Open source only (free, requires GPU)
-    python scripts/generate_all.py --models flux2 qwen-edit sd35 step1x --samples 100
+    python scripts/generate_all.py --models flux2 qwen-2512 sd35 step1x --samples 100
 
     # With API models (paid)
     python scripts/generate_all.py --models gpt-image imagen3 --samples 100
 
     # Full pipeline (all 6 models)
-    python scripts/generate_all.py --models gpt-image imagen3 flux2 qwen-edit sd35 step1x
+    python scripts/generate_all.py --models gpt-image imagen3 flux2 qwen-2512 sd35 step1x
 """
 
 import argparse
@@ -109,10 +109,10 @@ MODEL_CONFIGS = {
     },
 
     # Alibaba/Qwen: Chinese regulatory compliance, different cultural norms
-    "qwen-edit": {
-        "name": "Qwen-Image-Edit-2511",
-        "hf_model": "Qwen/Qwen-Image-Edit-2511",
-        "type": "t2i+i2i",
+    "qwen-2512": {
+        "name": "Qwen-Image-2512",
+        "hf_model": "Qwen/Qwen-Image-2512",
+        "type": "t2i",
         "dtype": "bfloat16",
         "vram": "24GB",
         "elo": 1133,
@@ -222,7 +222,7 @@ class ModelLoader:
                     config["hf_model"],
                     torch_dtype=dtype,
                 )
-            elif model_key == "qwen-edit":
+            elif model_key == "qwen-2512":
                 from diffusers import AutoPipelineForText2Image
                 self.pipeline = AutoPipelineForText2Image.from_pretrained(
                     config["hf_model"],
@@ -304,7 +304,7 @@ class ImageGenerator:
                     guidance_scale=guidance_scale,
                     generator=generator,
                 )
-            elif model_key in ["qwen-edit", "step1x"]:
+            elif model_key in ["qwen-2512", "step1x"]:
                 result = pipeline(
                     prompt=prompt,
                     num_inference_steps=num_steps,

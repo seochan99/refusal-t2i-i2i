@@ -127,6 +127,7 @@ MODEL_PROVIDERS = {
     "imagen-3": "google",
     "flux-2-max": "bfl",
     "flux-2-dev": "bfl",
+    "qwen-image-2512": "alibaba",
     "qwen-image-edit-2511": "alibaba",
     "step1x-edit-v1p2": "alibaba",
     "seedream-4.5": "bytedance",
@@ -402,7 +403,7 @@ def main():
     print("=" * 60)
 
     # Initialize for different models
-    models = ["gpt-image-1.5", "flux-2-dev", "qwen-image-edit-2511"]
+    models = ["gpt-image-1.5", "flux-2-dev", "qwen-image-2512"]
 
     for model in models:
         normalizer = PolicyNormalizer(model_name=model)

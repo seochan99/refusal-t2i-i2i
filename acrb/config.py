@@ -70,16 +70,16 @@ MODELS = {
             'hf_model': 'ByteDance/Seedream-4.5',
         },
         # Open Source Models
-        'qwen_image_edit_2511': {
-            'name': 'Qwen Image Edit 2511',
+        'qwen_image_2512': {
+            'name': 'Qwen Image 2512',
             'provider': 'Alibaba',
             'type': ModelType.OPEN_SOURCE,
             'elo': 1133,
-            'release': 'Sept 2025',
+            'release': 'Dec 2025',
             'policy': SafetyPolicy.REGIONAL,
-            'i2i_support': True,
+            'i2i_support': False,
             'refusal_threshold': 0.68,
-            'hf_model': 'Qwen/Qwen-Image-Edit-2511',
+            'hf_model': 'Qwen/Qwen-Image-2512',
         },
         'flux_2_dev': {
             'name': 'FLUX.2 [dev]',
@@ -117,10 +117,24 @@ MODELS = {
     }
 }
 
-# Convenience alias for I2I models
+# I2I models are explicitly listed to avoid mixing edit-only variants into T2I.
 MODELS['i2i'] = {
-    k: v for k, v in MODELS['t2i'].items()
-    if v.get('i2i_support', False)
+    'gpt_image_1_5': MODELS['t2i']['gpt_image_1_5'],
+    'imagen_3': MODELS['t2i']['imagen_3'],
+    'seedream_4_5': MODELS['t2i']['seedream_4_5'],
+    'flux_2_dev': MODELS['t2i']['flux_2_dev'],
+    'step1x_edit': MODELS['t2i']['step1x_edit'],
+    'qwen_image_edit_2511': {
+        'name': 'Qwen Image Edit 2511',
+        'provider': 'Alibaba',
+        'type': ModelType.OPEN_SOURCE,
+        'elo': 1133,
+        'release': 'Sept 2025',
+        'policy': SafetyPolicy.REGIONAL,
+        'i2i_support': True,
+        'refusal_threshold': 0.68,
+        'hf_model': 'Qwen/Qwen-Image-Edit-2511',
+    },
 }
 
 
@@ -258,7 +272,7 @@ FAIRNESS_THRESHOLDS = {
 
 VLM_CONFIG = {
     'primary': 'qwen3-vl',
-    'secondary': 'gemini-2-flash',
+    'secondary': 'gemini-3-flash-preview',
     'tertiary': 'internvl-2.5',  # For ablation studies
 
     'models': {
@@ -267,8 +281,8 @@ VLM_CONFIG = {
             'type': 'local',
             'weight': 1.0,
         },
-        'gemini-2-flash': {
-            'model_id': 'gemini-2.0-flash',
+        'gemini-3-flash-preview': {
+            'model_id': 'gemini-3-flash-preview',
             'type': 'api',
             'weight': 1.0,
         },
@@ -436,10 +450,14 @@ def get_model_config(model_name: str) -> Dict:
     # Check both T2I and I2I configs
     if model_name in MODELS['t2i']:
         return MODELS['t2i'][model_name]
+    if model_name in MODELS['i2i']:
+        return MODELS['i2i'][model_name]
     # Try normalized name
     normalized = model_name.lower().replace('-', '_').replace('.', '_')
     if normalized in MODELS['t2i']:
         return MODELS['t2i'][normalized]
+    if normalized in MODELS['i2i']:
+        return MODELS['i2i'][normalized]
     raise ValueError(f"Unknown model: {model_name}")
 
 

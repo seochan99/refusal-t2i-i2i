@@ -41,7 +41,7 @@ Stage II: Multi-Modal Generation
 
 Stage III: Dual-Metric Evaluation
 ├── Hard Refusal Detection (CLIP-based, τ=0.25)
-├── Soft Refusal Scoring (VLM ensemble: Qwen3-VL + Gemini 2.0 Flash)
+├── Soft Refusal Scoring (VLM ensemble: Qwen3-VL + Gemini 3 Flash Preview)
 └── Human Validation (12 annotators, κ=0.74 agreement)
     → Disparity metrics: Δ_refusal, Δ_erasure
 ```
@@ -147,7 +147,7 @@ python scripts/compute_disparity.py \
 - Imagen 3 (Google) - Moderate policy
 - Seedream 4.5 (ByteDance) - Regional variant
 - FLUX.2 [dev] (BFL) - Permissive policy
-- Qwen-Image-Edit-2511 (Alibaba) - Regional variant
+- Qwen-Image-2512 (Alibaba) - Regional variant
 - SD 3.5 Large (Stability AI) - Community policy
 
 ### Image-to-Image (I2I)
@@ -165,7 +165,7 @@ python scripts/compute_disparity.py \
 - Empty output detection
 
 ### Soft Refusal (Cue Erasure)
-- Multi-VLM ensemble (Qwen3-VL + Gemini 2.0 Flash)
+- Multi-VLM ensemble (Qwen3-VL + Gemini 3 Flash Preview)
 - Confidence-weighted voting for attribute retention
 - Three-state classification: Retained / Erased / Substituted
 

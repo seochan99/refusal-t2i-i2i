@@ -44,11 +44,11 @@ REFUSAL_THRESHOLD ?= 0.25
 RUN_ID ?= $(shell date +%Y%m%d_%H%M%S)
 
 # Models
-T2I_MODELS := flux-2-dev sd-3.5-large dall-e-3 midjourney-v6 ideogram-v2 imagen-3
+T2I_MODELS := flux-2-dev sd-3.5-large qwen-image-2512 dall-e-3 midjourney-v6 ideogram-v2 imagen-3
 I2I_MODELS := instructpix2pix cosxl-edit qwen-image-edit-2511
 
 # LLM/VLM Configuration
-LLM_MODEL ?= gemini-2.0-flash
+LLM_MODEL ?= gemini-3-flash-preview
 LLM_API_BASE ?= https://generativelanguage.googleapis.com/v1beta/openai
 VLM_MODEL ?= gpt-4o-mini
 
@@ -96,7 +96,7 @@ help:
 	@echo "  NUM_BASE_PROMPTS   - Number of base prompts (default: 100)"
 	@echo "  SEED               - Random seed (default: 42)"
 	@echo "  RUN_ID             - Run identifier (default: timestamp)"
-	@echo "  LLM_MODEL          - LLM for prompt expansion (default: gemini-2.0-flash)"
+	@echo "  LLM_MODEL          - LLM for prompt expansion (default: gemini-3-flash-preview)"
 	@echo "  VLM_MODEL          - VLM for cue scoring (default: gpt-4o-mini)"
 	@echo ""
 	@echo "Examples:"

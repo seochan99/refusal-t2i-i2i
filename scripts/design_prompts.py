@@ -24,7 +24,14 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from acrb.prompt_generation import BasePromptGenerator, AttributeExpander, LLMBackend
+from acrb.prompt_generation import (
+    BasePromptGenerator,
+    AttributeExpander,
+    LLMBackend,
+    PromptValidator,
+    ValidationConfig,
+    BenignIntentChecker,
+)
 
 
 def parse_args():
@@ -69,8 +76,8 @@ def parse_args():
     parser.add_argument(
         "--llm",
         type=str,
-        default="gemini-2.0-flash",
-        help="LLM model for dynamic expansion (default: gemini-2.0-flash)"
+        default="gemini-3-flash-preview",
+        help="LLM model for dynamic expansion (default: gemini-3-flash-preview)"
     )
     parser.add_argument(
         "--llm-api-base",
@@ -88,6 +95,45 @@ def parse_args():
         "--no-llm",
         action="store_true",
         help="Use template-based expansion instead of LLM"
+    )
+    parser.add_argument(
+        "--no-validate-prompts",
+        action="store_true",
+        help="Disable boundary/minimal-pair validation (not recommended)"
+    )
+    parser.add_argument(
+        "--benign-validation",
+        action="store_true",
+        help="Enable benign-intent validation (requires model or LLM)"
+    )
+    parser.add_argument(
+        "--benign-model",
+        type=str,
+        default=None,
+        help="Local benign classifier model path (overrides ACRB_BENIGN_MODEL)"
+    )
+    parser.add_argument(
+        "--benign-threshold",
+        type=float,
+        default=0.5,
+        help="Benign score threshold (default: 0.5)"
+    )
+    parser.add_argument(
+        "--require-benign-checker",
+        action="store_true",
+        help="Fail validation if benign checker is unavailable"
+    )
+    parser.add_argument(
+        "--sentence-model",
+        type=str,
+        default=None,
+        help="Local sentence-transformer model path for similarity checks"
+    )
+    parser.add_argument(
+        "--max-llm-attempts",
+        type=int,
+        default=1,
+        help="Max LLM attempts per expansion before fallback (default: 1)"
     )
 
     # Output configuration
@@ -127,9 +173,6 @@ def generate_prompts(args) -> list:
     # Initialize base prompt generator
     base_gen = BasePromptGenerator(seed=args.seed)
 
-    # Initialize attribute expander
-    expander = AttributeExpander(include_neutral=True)
-
     # Configure LLM if enabled
     llm_backend = None
     if not args.no_llm:
@@ -141,10 +184,37 @@ def generate_prompts(args) -> list:
                 api_key=api_key
             )
             base_gen.enable_llm(args.llm, args.llm_api_base)
-            expander.enable_llm(args.llm, args.llm_api_base)
             print(f"  LLM Backend: {args.llm}")
         else:
             print("  [WARNING] No API key found, using template-based expansion")
+
+    # Initialize attribute expander and validator
+    validator = None
+    if not args.no_validate_prompts:
+        benign_checker = None
+        if args.benign_validation:
+            benign_checker = BenignIntentChecker(
+                model_path=args.benign_model,
+                llm_backend=llm_backend,
+                threshold=args.benign_threshold
+            )
+        validator = PromptValidator(
+            ValidationConfig(
+                benign_validation=args.benign_validation,
+                benign_threshold=args.benign_threshold,
+                require_benign_checker=args.require_benign_checker,
+                sentence_model_path=args.sentence_model,
+            ),
+            benign_checker=benign_checker
+        )
+    expander = AttributeExpander(
+        include_neutral=True,
+        validator=validator,
+        max_llm_attempts=args.max_llm_attempts
+    )
+
+    if llm_backend:
+        expander.enable_llm(args.llm, args.llm_api_base)
 
     # Parse domains
     domains = None  # None means all domains
@@ -173,6 +243,19 @@ def generate_prompts(args) -> list:
             try:
                 boundary_text = llm_backend.rephrase_to_boundary(bp.text, bp.domain)
                 if boundary_text:
+                    if validator:
+                        boundary_result = validator.validate_boundary(
+                            boundary_text,
+                            domain=bp.domain,
+                            base_triggers=bp.trigger_words
+                        )
+                        if not boundary_result.ok:
+                            if args.verbose:
+                                print(
+                                    f"      [WARN] Boundary validation failed: "
+                                    f"{','.join(boundary_result.reasons)}"
+                                )
+                            boundary_text = bp.text
                     bp.text = boundary_text
             except Exception as e:
                 if args.verbose:

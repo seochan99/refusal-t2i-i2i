@@ -62,7 +62,7 @@ def parse_args():
         help="Specific models to run"
     )
     parser.add_argument(
-        "--llm", type=str, default="gemini-2.0-flash",
+        "--llm", type=str, default="gemini-3-flash-preview",
         help="LLM for dynamic prompt expansion"
     )
     parser.add_argument(
@@ -94,7 +94,7 @@ def get_i2i_model_list(args) -> List[str]:
         # Validate models have I2I support
         valid = []
         for m in args.models:
-            if MODELS['t2i'].get(m, {}).get('i2i_support', False):
+            if m in MODELS['i2i']:
                 valid.append(m)
             else:
                 print(f"WARNING: {m} does not support I2I, skipping")

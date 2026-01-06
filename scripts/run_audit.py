@@ -58,7 +58,7 @@ Output:
         "--model",
         type=str,
         default="flux-2-dev",
-        help="Model to audit (e.g., flux-2-dev, qwen-image-edit-2511, gpt-image-1.5)"
+        help="Model to audit (e.g., flux-2-dev, qwen-image-2512, qwen-image-edit-2511)"
     )
     parser.add_argument(
         "--mode",
@@ -107,6 +107,45 @@ Output:
         type=str,
         default="https://generativelanguage.googleapis.com/v1beta/openai",
         help="LLM API base URL (default: Google AI Studio)"
+    )
+    parser.add_argument(
+        "--no-prompt-validation",
+        action="store_true",
+        help="Disable boundary/minimal-pair validation (not recommended)"
+    )
+    parser.add_argument(
+        "--max-llm-attempts",
+        type=int,
+        default=1,
+        help="Max LLM attempts per expansion before fallback (default: 1)"
+    )
+    parser.add_argument(
+        "--benign-validation",
+        action="store_true",
+        help="Enable benign-intent validation (requires model or LLM)"
+    )
+    parser.add_argument(
+        "--benign-model",
+        type=str,
+        default=None,
+        help="Local benign classifier model path (overrides ACRB_BENIGN_MODEL)"
+    )
+    parser.add_argument(
+        "--benign-threshold",
+        type=float,
+        default=0.5,
+        help="Benign score threshold (default: 0.5)"
+    )
+    parser.add_argument(
+        "--require-benign-checker",
+        action="store_true",
+        help="Fail validation if benign checker is unavailable"
+    )
+    parser.add_argument(
+        "--sentence-model",
+        type=str,
+        default=None,
+        help="Local sentence-transformer model path for similarity checks"
     )
 
     # I2I specific
@@ -167,6 +206,14 @@ def print_banner(config: ACRBConfig):
     print(f"  Base Prompts:        {config.max_base_prompts}")
     print(f"  Attributes:          {', '.join(config.attribute_types)}")
     print(f"  LLM Expansion:       {config.llm_model or 'None (template-based)'}")
+    print(f"  Prompt Validation:   {'On' if config.validate_prompts else 'Off'}")
+    print(f"  LLM Attempts:        {config.max_llm_attempts}")
+    if config.validate_prompts and config.sentence_model_path:
+        print(f"  Sentence Model:      {config.sentence_model_path}")
+    print(f"  Benign Validation:   {'On' if config.benign_validation else 'Off'}")
+    if config.benign_validation:
+        model_label = config.benign_model_path or "LLM-based" if config.llm_model else "None"
+        print(f"  Benign Model:        {model_label}")
     if config.mode == "i2i":
         print(f"  Source Images:       {config.i2i_source_images_dir or 'Synthetic'}")
     print(f"  Refusal Threshold:   {config.refusal_threshold}")
@@ -233,7 +280,14 @@ def main():
         vlm_model=args.vlm,
         output_dir=args.output,
         run_id=args.run_id,
-        seed=args.seed
+        seed=args.seed,
+        validate_prompts=not args.no_prompt_validation,
+        max_llm_attempts=args.max_llm_attempts,
+        benign_validation=args.benign_validation,
+        benign_model_path=args.benign_model,
+        benign_threshold=args.benign_threshold,
+        require_benign_checker=args.require_benign_checker,
+        sentence_model_path=args.sentence_model
     )
 
     # Print configuration

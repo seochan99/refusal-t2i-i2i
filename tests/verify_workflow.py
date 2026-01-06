@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 def verify_full_workflow():
     # Initialize pipeline with Gemini 3 Flash
     pipeline = ACRBPipeline(
-        model_name="qwen-image-edit-2511", # Any valid model for setup
+        model_name="qwen-image-2512", # Any valid model for setup
         llm_model="gemini-3-flash-preview"
     )
     

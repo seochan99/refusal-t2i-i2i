@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import re
 from .base_prompts import BasePrompt
 from .llm_backend import LLMBackend
+from .validation import PromptValidator
 
 
 # Attribute categories for counterfactual expansion
@@ -63,6 +64,7 @@ class ExpandedPrompt:
     attribute_marker: str  # The actual text inserted
     domain: str
     is_benign: bool
+    validation: Optional[Dict] = None
 
 
 class AttributeExpander:
@@ -77,15 +79,24 @@ class AttributeExpander:
         r"\bPeople\b",
     ]
     
-    def __init__(self, include_neutral: bool = True):
+    def __init__(
+        self,
+        include_neutral: bool = True,
+        validator: Optional[PromptValidator] = None,
+        max_llm_attempts: int = 1
+    ):
         """
         Initialize expander.
         
         Args:
             include_neutral: Whether to include neutral (no attribute) version
+            validator: Optional prompt validator for minimal-pair constraints
+            max_llm_attempts: Number of LLM attempts before fallback
         """
         self.include_neutral = include_neutral
         self.llm_backend: Optional[LLMBackend] = None
+        self.validator = validator
+        self.max_llm_attempts = max(1, max_llm_attempts)
 
     def enable_llm(self, model_name: str = "gpt-oss-20b", api_base: str = "http://localhost:8000/v1"):
         """Enable LLM-based cue expansion."""
@@ -214,6 +225,21 @@ class AttributeExpander:
         
         # Add neutral version
         if self.include_neutral:
+            neutral_validation = None
+            if self.validator:
+                result = self.validator.validate_expansion(
+                    base_prompt=base_prompt,
+                    expanded_text=base_prompt.text,
+                    attribute_type="neutral",
+                    attribute_value="none",
+                    attribute_markers=[]
+                )
+                neutral_validation = {
+                    "ok": result.ok,
+                    "reasons": result.reasons,
+                    "scores": result.scores,
+                    "meta": result.meta,
+                }
             expanded.append(ExpandedPrompt(
                 expanded_id=f"{base_prompt.prompt_id}_N{expand_id:03d}",
                 base_prompt_id=base_prompt.prompt_id,
@@ -224,6 +250,7 @@ class AttributeExpander:
                 attribute_marker="",
                 domain=base_prompt.domain,
                 is_benign=base_prompt.is_benign,
+                validation=neutral_validation,
             ))
             expand_id += 1
         
@@ -238,7 +265,22 @@ class AttributeExpander:
                     attr_type,
                     attr_info
                 )
-                
+                validation = None
+                if self.validator:
+                    result = self.validator.validate_expansion(
+                        base_prompt=base_prompt,
+                        expanded_text=expanded_text,
+                        attribute_type=attr_type,
+                        attribute_value=attr_info["value"],
+                        attribute_markers=attr_info["markers"],
+                    )
+                    validation = {
+                        "ok": result.ok,
+                        "reasons": result.reasons,
+                        "scores": result.scores,
+                        "meta": result.meta,
+                    }
+
                 expanded.append(ExpandedPrompt(
                     expanded_id=f"{base_prompt.prompt_id}_E{expand_id:03d}",
                     base_prompt_id=base_prompt.prompt_id,
@@ -249,6 +291,7 @@ class AttributeExpander:
                     attribute_marker=marker,
                     domain=base_prompt.domain,
                     is_benign=base_prompt.is_benign,
+                    validation=validation,
                 ))
                 expand_id += 1
         
@@ -273,6 +316,21 @@ class AttributeExpander:
         
         # Add neutral version
         if self.include_neutral:
+            neutral_validation = None
+            if self.validator:
+                result = self.validator.validate_expansion(
+                    base_prompt=base_prompt,
+                    expanded_text=base_prompt.text,
+                    attribute_type="neutral",
+                    attribute_value="none",
+                    attribute_markers=[]
+                )
+                neutral_validation = {
+                    "ok": result.ok,
+                    "reasons": result.reasons,
+                    "scores": result.scores,
+                    "meta": result.meta,
+                }
             expanded.append(ExpandedPrompt(
                 expanded_id=f"{base_prompt.prompt_id}_LN{expand_id:03d}",
                 base_prompt_id=base_prompt.prompt_id,
@@ -283,6 +341,7 @@ class AttributeExpander:
                 attribute_marker="",
                 domain=base_prompt.domain,
                 is_benign=base_prompt.is_benign,
+                validation=neutral_validation,
             ))
             expand_id += 1
             
@@ -291,16 +350,53 @@ class AttributeExpander:
                 continue
                 
             for attr_info in ATTRIBUTE_CATEGORIES[attr_type]:
-                # Ask LLM to expand with cues
-                expanded_text = self.llm_backend.expand_attribute_cues(
-                    base_prompt.text, 
-                    attr_type, 
-                    attr_info["value"]
-                )
-                
+                expanded_text = ""
+                result_ok = True
+                for attempt in range(self.max_llm_attempts):
+                    expanded_text = self.llm_backend.expand_attribute_cues(
+                        base_prompt.text,
+                        attr_type,
+                        attr_info["value"]
+                    )
+                    if not expanded_text:
+                        result_ok = False
+                        continue
+                    if not self.validator:
+                        break
+                    result = self.validator.validate_expansion(
+                        base_prompt=base_prompt,
+                        expanded_text=expanded_text,
+                        attribute_type=attr_type,
+                        attribute_value=attr_info["value"],
+                        attribute_markers=attr_info["markers"],
+                    )
+                    result_ok = result.ok
+                    if result_ok:
+                        break
                 if not expanded_text:
-                    # Fallback to template if LLM fails
-                    expanded_text, _ = self._insert_attribute(base_prompt.text, attr_type, attr_info)
+                    expanded_text = ""
+
+                if not expanded_text or (self.validator and not result_ok):
+                    # Fallback to template if LLM fails or violates constraints
+                    expanded_text, _ = self._insert_attribute(
+                        base_prompt.text, attr_type, attr_info
+                    )
+
+                validation = None
+                if self.validator:
+                    result = self.validator.validate_expansion(
+                        base_prompt=base_prompt,
+                        expanded_text=expanded_text,
+                        attribute_type=attr_type,
+                        attribute_value=attr_info["value"],
+                        attribute_markers=attr_info["markers"],
+                    )
+                    validation = {
+                        "ok": result.ok,
+                        "reasons": result.reasons,
+                        "scores": result.scores,
+                        "meta": result.meta,
+                    }
 
                 expanded.append(ExpandedPrompt(
                     expanded_id=f"{base_prompt.prompt_id}_LE{expand_id:03d}",
@@ -312,6 +408,7 @@ class AttributeExpander:
                     attribute_marker=attr_info["markers"][0],
                     domain=base_prompt.domain,
                     is_benign=base_prompt.is_benign,
+                    validation=validation,
                 ))
                 expand_id += 1
                 
@@ -341,6 +438,7 @@ class AttributeExpander:
                 "attribute_marker": p.attribute_marker,
                 "domain": p.domain,
                 "is_benign": p.is_benign,
+                "validation": p.validation,
             }
             for p in expanded_prompts
         ]

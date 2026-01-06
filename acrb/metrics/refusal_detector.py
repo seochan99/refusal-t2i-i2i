@@ -58,6 +58,8 @@ MODEL_CLIP_THRESHOLDS: Dict[str, float] = {
     "seedream_4_5": 0.68,       # Alias
     # Open source models
     "qwen-image-edit-2511": 0.68,  # Qwen Image Edit - Regional variant
+    "qwen-image-2512": 0.68,       # Qwen Image - Regional variant
+    "qwen_image_2512": 0.68,       # Alias
     "qwen_2_5_vl": 0.68,           # Alias for Qwen VLM
     "flux-2-dev": 0.68,            # FLUX.2 [dev] - Permissive policy
     "flux_2_dev": 0.68,            # Alias

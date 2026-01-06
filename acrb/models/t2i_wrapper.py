@@ -2,7 +2,7 @@
 T2I Model Wrapper
 
 Unified wrapper for Text-to-Image generation models.
-Supports: Nano Banana Pro, Seedream 4.5, FLUX.1, Stable Diffusion 3.5
+Supports: Nano Banana Pro, Seedream 4.5, FLUX.1, Stable Diffusion 3.5, Qwen-Image-2512
 """
 
 import os
@@ -24,7 +24,7 @@ class T2IModel(Enum):
     NANO_BANANA_PRO = "nano-banana-pro"       # Google - ELO #2 (1221)
     FLUX_2_MAX = "flux-2-max"                 # BFL - ELO #3 (1210)
     # Open Source Top 3
-    QWEN_IMAGE_EDIT_2511 = "qwen-image-edit-2511"  # Alibaba - ELO #1 (1133)
+    QWEN_IMAGE_2512 = "qwen-image-2512"  # Alibaba - ELO #1 (1133)
     FLUX_2_DEV = "flux-2-dev"                 # BFL - ELO #2 (1131)
     STEP1X_EDIT = "step1x-edit"               # StepFun - ELO #3 (1081)
 
@@ -91,16 +91,16 @@ T2I_MODELS = {
         "supports_i2i": True,  # Added (IJCAI feedback - model added)
         "i2i_features": ["instruction editing", "style transfer", "face editing"],
     },
-    "qwen-image-edit-2511": {
-        "name": "Qwen Image Edit 2511",
+    "qwen-image-2512": {
+        "name": "Qwen Image 2512",
         "provider": "Alibaba",
         "type": "open_source",
         "elo": 1133,
-        "release": "Sept 2025",
-        "hf_model": "Qwen/Qwen-Image-Edit-2511",
+        "release": "Dec 2025",
+        "hf_model": "Qwen/Qwen-Image-2512",
         "pricing": "$30.0/1k imgs",
-        "features": ["20B params", "integrated LoRA", "text editing", "geometric reasoning"],
-        "supports_i2i": True,
+        "features": ["20B params", "text-to-image", "multilingual prompts"],
+        "supports_i2i": False,
     },
     "flux-2-dev": {
         "name": "FLUX.2 [dev]",
@@ -128,7 +128,7 @@ T2I_MODELS = {
 
 # Quick reference: 7 models total (IJCAI requirement)
 # Closed: GPT Image 1.5, Nano Banana Pro, Imagen 3, FLUX.2 [max]
-# Open: Seedream 4.5, Qwen Image Edit, FLUX.2 [dev], Step1X-Edit
+# Open: Seedream 4.5, Qwen Image 2512, FLUX.2 [dev], Step1X-Edit
 
 
 @dataclass
@@ -192,7 +192,7 @@ class T2IModelWrapper:
             "nano-banana-pro": "GOOGLE_API_KEY",
             "seedream-4.5": "BYTEPLUS_API_KEY",
             "flux-1-dev": "FAL_API_KEY",
-            "qwen-image": "DASHSCOPE_API_KEY",
+            "qwen-image-2512": "DASHSCOPE_API_KEY",
         }
         env_var = key_mapping.get(self.model_name)
         return os.getenv(env_var) if env_var else None

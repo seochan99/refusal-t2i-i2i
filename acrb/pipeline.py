@@ -16,7 +16,14 @@ import logging
 from datetime import datetime
 from tqdm import tqdm
 
-from .prompt_generation import BasePromptGenerator, AttributeExpander, LLMBackend
+from .prompt_generation import (
+    BasePromptGenerator,
+    AttributeExpander,
+    LLMBackend,
+    PromptValidator,
+    ValidationConfig,
+    BenignIntentChecker,
+)
 from .models import T2IModelWrapper, I2IModelWrapper
 from .metrics import RefusalDetector, CueRetentionScorer, DisparityMetric
 
@@ -37,6 +44,13 @@ class ACRBConfig:
     llm_model: str = "gemini-3-flash-preview"
     llm_api_base: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     llm_api_key: Optional[str] = None
+    validate_prompts: bool = True
+    max_llm_attempts: int = 1
+    benign_validation: bool = False
+    benign_model_path: Optional[str] = None
+    benign_threshold: float = 0.5
+    require_benign_checker: bool = False
+    sentence_model_path: Optional[str] = None
 
     # I2I specific
     i2i_source_images_dir: Optional[str] = None  # FFHQ/COCO directory
@@ -113,7 +127,7 @@ class ACRBPipeline:
         """Initialize all pipeline components."""
         # Stage I: Prompt generation
         self.base_prompt_gen = BasePromptGenerator(seed=self.config.seed)
-        self.attribute_expander = AttributeExpander(include_neutral=True)
+        self.llm_backend = None
 
         # LLM backend for dynamic expansion
         if self.config.llm_model:
@@ -131,8 +145,34 @@ class ACRBPipeline:
                 api_base=self.config.llm_api_base
             )
         else:
-            self.llm_backend = None
             logger.warning("No LLM specified - using template-based expansion")
+
+        benign_checker = None
+        if self.config.benign_validation:
+            benign_checker = BenignIntentChecker(
+                model_path=self.config.benign_model_path,
+                llm_backend=self.llm_backend,
+                threshold=self.config.benign_threshold
+            )
+
+        validator = None
+        if self.config.validate_prompts:
+            validator = PromptValidator(
+                ValidationConfig(
+                    benign_validation=self.config.benign_validation,
+                    benign_threshold=self.config.benign_threshold,
+                    require_benign_checker=self.config.require_benign_checker,
+                    sentence_model_path=self.config.sentence_model_path,
+                ),
+                benign_checker=benign_checker
+            )
+
+        self.prompt_validator = validator
+        self.attribute_expander = AttributeExpander(
+            include_neutral=True,
+            validator=validator,
+            max_llm_attempts=self.config.max_llm_attempts
+        )
 
         # Stage II: Model wrappers
         if self.config.mode == "t2i":
@@ -191,11 +231,24 @@ class ACRBPipeline:
             # Step 1: Boundary Rephrasing B(P_0, L, D)
             if self.llm_backend:
                 logger.debug(f"Rephrasing to boundary: {bp.text[:50]}...")
+                original_text = bp.text
                 boundary_text = self.llm_backend.rephrase_to_boundary(
                     original_prompt=bp.text,
                     domain=bp.domain
                 )
                 if boundary_text:
+                    if self.prompt_validator:
+                        boundary_result = self.prompt_validator.validate_boundary(
+                            boundary_text,
+                            domain=bp.domain,
+                            base_triggers=bp.trigger_words
+                        )
+                        if not boundary_result.ok:
+                            logger.warning(
+                                "Boundary rephrase failed checks (%s). Using base prompt.",
+                                ",".join(boundary_result.reasons)
+                            )
+                            boundary_text = original_text
                     bp.text = boundary_text
                     logger.debug(f"Boundary version: {boundary_text[:50]}...")
 

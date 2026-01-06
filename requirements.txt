@@ -24,7 +24,7 @@ peft>=0.14.0  # For LoRA support
 # =============================================================================
 # Primary VLM: Qwen3-VL for cue retention scoring
 qwen-vl-utils>=0.0.8
-# Secondary VLM: Gemini 2.0 Flash (API-based)
+# Secondary VLM: Gemini 3 Flash Preview (API-based)
 google-generativeai>=0.8.0
 # Tertiary VLM: InternVL-2.5 for ablation studies
 # Note: Requires separate installation from HuggingFace

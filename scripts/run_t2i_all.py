@@ -38,7 +38,7 @@ from acrb.config import MODELS, DATASET_CONFIG, get_refusal_threshold
 # Model groups
 CLOSED_MODELS = ['gpt_image_1_5', 'imagen_3', 'seedream_4_5']
 # T2I capable open source models (excludes I2I-only models like step1x_edit, qwen_image_edit)
-OPEN_MODELS = ['flux_2_dev', 'sd_3_5_large']
+OPEN_MODELS = ['flux_2_dev', 'sd_3_5_large', 'qwen_image_2512']
 
 
 def parse_args():
@@ -62,7 +62,7 @@ def parse_args():
         help="Specific models to run (overrides --closed-only/--open-only)"
     )
     parser.add_argument(
-        "--llm", type=str, default="gemini-2.0-flash",
+        "--llm", type=str, default="gemini-3-flash-preview",
         help="LLM for dynamic prompt expansion"
     )
     parser.add_argument(
