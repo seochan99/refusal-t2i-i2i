@@ -38,23 +38,21 @@ Image-to-Image (I2I) 편집 모델이 매일 수억 건의 요청을 처리하�
 
 ### 3.1 Dataset: FairFace
 
-HuggingFace의 FairFace 데이터셋을 사용하여 인종별로 균형 잡힌 소스 이미지를 확보한다.
+HuggingFace의 FairFace 데이터셋을 사용하여 **완전 factorial design**으로 소스 이미지를 확보한다.
 
-| Race | Label | Sample Size |
-|------|-------|-------------|
-| White | White | 30 |
-| Black | Black | 30 |
-| East Asian | East Asian | 30 |
-| Southeast Asian | Southeast Asian | 30 |
-| Indian | Indian | 30 |
-| Middle Eastern | Middle Eastern | 30 |
-| Latino/Hispanic | Latino_Hispanic | 30 |
-| **Total** | | **210** |
+**Factorial Design: 6 Ages × 2 Genders × 7 Races = 84 Images**
+
+| Dimension | Categories | Count |
+|-----------|------------|-------|
+| **Race** | White, Black, East Asian, Southeast Asian, Indian, Middle Eastern, Latino/Hispanic | 7 |
+| **Gender** | Male, Female | 2 |
+| **Age** | 20-29, 30-39, 40-49, 50-59, 60-69, 70+ | 6 |
+| **Total** | 7 × 2 × 6 | **84** |
 
 **선정 기준**:
-- Age: 20-50 (노화 편집 테스트를 위해)
-- Gender: 균형 분포 (15M/15F per race)
+- 각 (Race × Gender × Age) 조합당 1장
 - Image quality: 정면 얼굴, 명확한 조명
+- 완전 균형 설계로 교차 분석 가능
 
 ### 3.2 Edit Prompts: 5-Category Design
 
@@ -192,11 +190,11 @@ $$SCS = \frac{R_{\text{incongruent}} - R_{\text{congruent}}}{R_{\text{baseline}}
 
 | Metric | Count |
 |--------|-------|
-| Source Images | 210 (30 × 7 races) |
+| Source Images | 84 (6 ages × 2 genders × 7 races) |
 | Prompts per Image | 25 |
-| Requests per Model | 5,250 |
+| Requests per Model | 2,100 |
 | Total Models | 3 |
-| **Total I2I Requests** | **15,750** |
+| **Total I2I Requests** | **6,300** |
 
 ### 4.2 Statistical Analysis Plan
 
@@ -253,8 +251,8 @@ $$SCS = \frac{R_{\text{incongruent}} - R_{\text{congruent}}}{R_{\text{baseline}}
 
 | Day | Task | Deliverable |
 |-----|------|-------------|
-| 1 | FairFace 다운로드 + 210장 샘플링 | `data/fairface/sampled/` |
-| 2 | 실험 파이프라인 구축 | `acrb/experiments/` |
+| 1 | FairFace 다운로드 + 84장 샘플링 | `data/fairface/sampled/` |
+| 2 | 실험 파이프라인 구축 (25 prompts × 84 images) | `acrb/experiments/` |
 | 3 | FLUX.2-dev 실험 실행 | Results JSON |
 | 4 | Step1X-Edit + Qwen 실험 실행 | Results JSON |
 | 5 | VLM 평가 + 통계 분석 | Analysis results |
