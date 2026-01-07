@@ -1,264 +1,166 @@
 #!/bin/bash
 #===============================================================================
-# ACRB Experiment Runner - 6 Representative Models with Distinct Safety Policies
+# ACRB I2I Experiment Runner
 #
-# Runs the full ACRB (Attribute-Conditioned Refusal Bias) experiment pipeline.
-# Models selected for DIVERSE SAFETY ALIGNMENT approaches, not speed variants.
+# Runs I2I refusal bias evaluation experiments.
 #
-# 6 Models (by Safety Policy):
-#   Conservative:    gpt-image (OpenAI), imagen3 (Google)
-#   Permissive:      flux2 (BFL)
-#   China-aligned:   qwen-edit (Alibaba), step1x (StepFun)
-#   Community:       sd35 (Stability AI)
-#
-# Requirements:
-#   - NVIDIA GPU with 24GB+ VRAM (for local models)
-#   - Python 3.10+ with CUDA support
-#   - API keys for closed models: OPENAI_API_KEY, GOOGLE_API_KEY
-#   - ~100GB disk space for images
+# Supported I2I Models:
+#   - flux-2-dev (Black Forest Labs) - Permissive
+#   - gpt-image-1.5 (OpenAI) - Conservative
+#   - imagen-3 (Google) - Moderate
+#   - step1x-edit (StepFun) - I2I specialist
+#   - qwen-image-edit-2511 (Alibaba) - Regional
+#   - seedream-4.5 (ByteDance) - Regional
 #
 # Usage:
-#   ./run_experiment.sh                    # Local models only (4 models, free)
-#   ./run_experiment.sh --all              # All 6 models (requires API keys)
-#   ./run_experiment.sh --quick            # Quick test (10 samples, 1 model)
-#   ./run_experiment.sh --model flux2      # Single model
-#   ./run_experiment.sh --samples 500      # Custom sample count
-#   ./run_experiment.sh --skip-vlm         # Skip VLM scoring (faster)
+#   ./run_experiment.sh                         # Default: flux-2-dev, 100 samples
+#   ./run_experiment.sh --model step1x-edit     # Specific model
+#   ./run_experiment.sh --samples 500           # Custom sample count
+#   ./run_experiment.sh --help                  # Show help
 #===============================================================================
 
 set -e
 
-# Configuration
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "${PROJECT_ROOT}"
 
 # Default parameters
-# Local models only (free, no API keys needed)
-MODELS_LOCAL="flux2 qwen-edit sd35 step1x"
-# All 6 models (requires API keys)
-MODELS_ALL="gpt-image imagen3 flux2 qwen-edit sd35 step1x"
-# Default: local models only
-MODELS="${MODELS_LOCAL}"
+MODEL="flux-2-dev"
 SAMPLES=100
-PROMPTS_FILE="data/prompts/expanded_prompts.json"
-OUTPUT_DIR="experiments/images"
-VLM_MODEL="qwen-vl"
-SKIP_VLM=false
-QUICK_MODE=false
-ALL_MODELS=false
+SOURCE_DIR="data/raw/ffhq"
+OUTPUT_DIR="experiments/results"
+PROMPTS_FILE=""
 SEED=42
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --all)
-            ALL_MODELS=true
-            MODELS="${MODELS_ALL}"
-            shift
-            ;;
-        --quick)
-            QUICK_MODE=true
-            MODELS="flux2"
-            SAMPLES=10
-            shift
-            ;;
         --model)
-            MODELS="$2"
-            shift 2
-            ;;
-        --models)
-            MODELS="$2"
+            MODEL="$2"
             shift 2
             ;;
         --samples)
             SAMPLES="$2"
             shift 2
             ;;
-        --skip-vlm)
-            SKIP_VLM=true
-            shift
+        --source-dir)
+            SOURCE_DIR="$2"
+            shift 2
             ;;
         --output)
             OUTPUT_DIR="$2"
             shift 2
             ;;
+        --prompts)
+            PROMPTS_FILE="$2"
+            shift 2
+            ;;
+        --seed)
+            SEED="$2"
+            shift 2
+            ;;
         --help|-h)
-            echo "ACRB Experiment Runner - 6 Models with Distinct Safety Policies"
+            echo "ACRB I2I Experiment Runner"
             echo ""
-            echo "Usage: $0 [OPTIONS]"
+            echo "Usage: $0 [options]"
             echo ""
             echo "Options:"
-            echo "  --all            All 6 models (requires OPENAI_API_KEY, GOOGLE_API_KEY)"
-            echo "  --quick          Quick test mode (10 samples, 1 model)"
-            echo "  --model MODEL    Single model"
-            echo "  --models LIST    Multiple models (space-separated, quoted)"
-            echo "  --samples N      Number of prompts to process (default: 100)"
-            echo "  --skip-vlm       Skip VLM cue retention scoring"
-            echo "  --output DIR     Output directory (default: experiments/images)"
-            echo "  --help           Show this message"
+            echo "  --model MODEL       I2I model to use (default: flux-2-dev)"
+            echo "  --samples N         Number of samples (default: 100)"
+            echo "  --source-dir DIR    Source images directory (default: data/raw/ffhq)"
+            echo "  --output DIR        Output directory (default: experiments/results)"
+            echo "  --prompts FILE      Prompts JSON file (optional)"
+            echo "  --seed N            Random seed (default: 42)"
+            echo "  --help, -h          Show this help"
             echo ""
-            echo "Available Models (6 with distinct safety policies):"
-            echo "  API (paid):  gpt-image (OpenAI), imagen3 (Google)"
-            echo "  Local (free): flux2 (BFL), qwen-edit (Alibaba), sd35 (Stability), step1x (StepFun)"
-            echo ""
-            echo "Safety Policy Spectrum:"
-            echo "  Conservative:  gpt-image, imagen3"
-            echo "  Permissive:    flux2"
-            echo "  China-aligned: qwen-edit, step1x"
-            echo "  Community:     sd35"
-            echo ""
-            echo "Examples:"
-            echo "  $0                         # Local models only (4 models, free)"
-            echo "  $0 --all                   # All 6 models (requires API keys)"
-            echo "  $0 --quick                 # Quick 10-sample test"
-            echo "  $0 --model flux2 --samples 500"
-            echo "  $0 --models \"gpt-image imagen3\" --samples 100"
+            echo "Supported I2I models:"
+            echo "  flux-2-dev          Black Forest Labs (open, permissive)"
+            echo "  gpt-image-1.5       OpenAI (closed, conservative)"
+            echo "  imagen-3            Google (closed, moderate)"
+            echo "  step1x-edit         StepFun (open, I2I specialist)"
+            echo "  qwen-image-edit-2511 Alibaba (open, regional)"
+            echo "  seedream-4.5        ByteDance (closed, regional)"
             exit 0
             ;;
         *)
             echo "Unknown option: $1"
+            echo "Use --help for usage information"
             exit 1
             ;;
     esac
 done
 
-# Print banner
-echo ""
-echo "================================================================"
-echo "  ACRB: Attribute-Conditioned Refusal Bias Audit"
-echo "  6 Models with Distinct Safety Alignment Policies"
-echo "================================================================"
-echo ""
-echo "  Models:     ${MODELS}"
-echo "  Mode:       $([[ $ALL_MODELS == true ]] && echo "All 6 (API + Local)" || echo "Local only (free)")"
-echo "  Samples:    ${SAMPLES}"
-echo "  VLM:        ${VLM_MODEL}$([[ $SKIP_VLM == true ]] && echo " (SKIPPED)")"
-echo "  Output:     ${OUTPUT_DIR}"
-echo "  Timestamp:  ${TIMESTAMP}"
-echo ""
-if [[ $ALL_MODELS == true ]]; then
-    echo "  API Keys Required:"
-    echo "    OPENAI_API_KEY: $([[ -n $OPENAI_API_KEY ]] && echo "SET" || echo "NOT SET")"
-    echo "    GOOGLE_API_KEY: $([[ -n $GOOGLE_API_KEY ]] && echo "SET" || echo "NOT SET")"
+echo "========================================"
+echo "ACRB I2I Experiment Runner"
+echo "========================================"
+echo "Model:         $MODEL"
+echo "Samples:       $SAMPLES"
+echo "Source Images: $SOURCE_DIR"
+echo "Output:        $OUTPUT_DIR"
+echo "Seed:          $SEED"
+echo "========================================"
+
+# Check if source images exist
+if [ ! -d "$SOURCE_DIR" ]; then
+    echo ""
+    echo "Warning: Source images directory not found: $SOURCE_DIR"
+    echo "Please download FFHQ or COCO images first."
+    echo ""
+    echo "For FFHQ: https://github.com/NVlabs/ffhq-dataset"
+    echo "For COCO: https://cocodataset.org/"
     echo ""
 fi
-echo "================================================================"
-echo ""
 
-# Step 0: Check prerequisites
-echo "[1/5] Checking prerequisites..."
-
-# Check Python
-if ! command -v python3 &> /dev/null; then
-    echo "ERROR: Python3 not found"
+# Check Python environment
+if ! python -c "import acrb" 2>/dev/null; then
+    echo "Error: acrb package not found. Please install dependencies:"
+    echo "  pip install -r requirements.txt"
     exit 1
 fi
 
-# Check CUDA
-python3 -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" 2>/dev/null || {
-    echo "ERROR: CUDA not available. This script requires a GPU."
-    echo "Install PyTorch with CUDA: pip install torch --index-url https://download.pytorch.org/whl/cu121"
-    exit 1
-}
-
-GPU_NAME=$(python3 -c "import torch; print(torch.cuda.get_device_name(0))")
-GPU_MEM=$(python3 -c "import torch; print(f'{torch.cuda.get_device_properties(0).total_memory/1e9:.1f}GB')")
-echo "  GPU: ${GPU_NAME} (${GPU_MEM})"
-
-# Check dependencies
-python3 -c "import diffusers, transformers, clip" 2>/dev/null || {
-    echo "Installing dependencies..."
-    pip install -q -r requirements.txt
-}
-echo "  Dependencies: OK"
-echo ""
-
-# Step 1: Check prompts
-echo "[2/5] Checking prompts..."
-if [[ ! -f "${PROMPTS_FILE}" ]]; then
-    echo "  Prompts file not found. Generating..."
-    if [[ -f "scripts/generate_prompts.py" ]]; then
-        python3 scripts/generate_prompts.py --output "${PROMPTS_FILE}" --samples ${SAMPLES}
-    else
-        # Use existing expanded_prompts if available
-        if [[ -f "data/prompts/expanded_prompts.json" ]]; then
-            PROMPTS_FILE="data/prompts/expanded_prompts.json"
-        else
-            echo "ERROR: No prompts file found and cannot generate."
-            exit 1
-        fi
-    fi
-fi
-PROMPT_COUNT=$(python3 -c "import json; print(len(json.load(open('${PROMPTS_FILE}'))))")
-echo "  Prompts: ${PROMPTS_FILE} (${PROMPT_COUNT} prompts)"
-echo ""
-
-# Step 2: Generate images
-echo "[3/5] Generating images with ${MODELS}..."
-mkdir -p "${OUTPUT_DIR}"
-
-python3 scripts/generate_all.py \
-    --models ${MODELS} \
-    --samples ${SAMPLES} \
-    --prompts "${PROMPTS_FILE}" \
-    --output "${OUTPUT_DIR}" \
-    --resume
-
-echo ""
-echo "  Image generation complete!"
-echo ""
-
-# Step 3: Evaluate (CLIP refusal detection + VLM cue retention)
-echo "[4/5] Evaluating generated images..."
-
-VLM_ARGS=""
-if [[ $SKIP_VLM == true ]]; then
-    VLM_ARGS="--skip-cue"
-    echo "  Skipping VLM cue retention scoring"
-else
-    VLM_ARGS="--vlm ${VLM_MODEL}"
-    echo "  Using local VLM: ${VLM_MODEL}"
+# Build prompts argument
+PROMPTS_ARG=""
+if [ -n "$PROMPTS_FILE" ] && [ -f "$PROMPTS_FILE" ]; then
+    PROMPTS_ARG="prompts_file='$PROMPTS_FILE',"
 fi
 
-python3 scripts/evaluate_all.py \
-    --results-dir "${OUTPUT_DIR}" \
-    --refusal-threshold 0.25 \
-    ${VLM_ARGS}
-
+# Run experiment
 echo ""
-echo "  Evaluation complete!"
+echo "Starting I2I experiment..."
 echo ""
 
-# Step 4: Compute disparity metrics
-echo "[5/5] Computing disparity metrics..."
+python -c "
+from acrb import ACRBPipeline, ACRBConfig
 
-METRICS_DIR="experiments/metrics"
-mkdir -p "${METRICS_DIR}"
+config = ACRBConfig(
+    model_name='$MODEL',
+    max_base_prompts=$SAMPLES,
+    i2i_source_images_dir='$SOURCE_DIR',
+    output_dir='$OUTPUT_DIR',
+    seed=$SEED,
+)
 
-python3 scripts/compute_disparity.py \
-    --input "${OUTPUT_DIR}/evaluation_results.json" \
-    --output "${METRICS_DIR}"
+pipeline = ACRBPipeline(config)
+prompts_file = '$PROMPTS_FILE' if '$PROMPTS_FILE' else None
+result = pipeline.run(prompts_file)
+
+print()
+print('=' * 50)
+print('EXPERIMENT RESULTS')
+print('=' * 50)
+print(f'Model:          {result.model_name}')
+print(f'Total Samples:  {result.total_samples}')
+print(f'Total Refused:  {result.total_refused}')
+print(f'Total Failed:   {result.total_failed}')
+print()
+print(f'Refusal Rate:   {result.refusal_rate:.2%}')
+print(f'Failure Rate:   {result.failure_rate:.2%}')
+print()
+print(f'Delta Refusal:  {result.delta_refusal:.4f}')
+print(f'Delta Erasure:  {result.delta_erasure:.4f}')
+print('=' * 50)
+"
 
 echo ""
-
-# Summary
-echo "================================================================"
-echo "  EXPERIMENT COMPLETE"
-echo "================================================================"
-echo ""
-echo "  Results saved to:"
-echo "    - Images:      ${OUTPUT_DIR}/"
-echo "    - Evaluation:  ${OUTPUT_DIR}/evaluation_results.json"
-echo "    - Metrics:     ${METRICS_DIR}/disparity_summary.json"
-echo "    - LaTeX:       ${METRICS_DIR}/table_*.tex"
-echo ""
-echo "  Quick view:"
-echo "    cat ${METRICS_DIR}/disparity_summary.json | python3 -m json.tool"
-echo ""
-echo "  Next steps:"
-echo "    1. Review metrics in disparity_summary.json"
-echo "    2. Run Human Eval: cd survey-app && npm run dev"
-echo "    3. Copy tables to paper/tables/"
-echo ""
-echo "================================================================"
+echo "Experiment completed!"
+echo "Results saved to: $OUTPUT_DIR/$MODEL/"
