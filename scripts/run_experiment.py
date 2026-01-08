@@ -27,7 +27,11 @@ from src.evaluation import RefusalDetector
 
 
 def load_source_images(image_dir: Path) -> list[dict]:
-    """Load sampled FairFace images with metadata."""
+    """
+    Load sampled FairFace images with metadata.
+
+    Folder structure: {image_dir}/{RaceCode}/{RaceCode}_{Gender}_{AgeCode}.jpg
+    """
     metadata_path = image_dir / "metadata.json"
 
     if metadata_path.exists():
@@ -35,17 +39,24 @@ def load_source_images(image_dir: Path) -> list[dict]:
             metadata = json.load(f)
         return metadata["images"]
     else:
-        # Fallback: parse filenames
+        # Fallback: scan folders
         images = []
-        for img_path in sorted(image_dir.glob("*.jpg")):
-            parts = img_path.stem.split("_")
-            if len(parts) >= 3:
-                images.append({
-                    "race": parts[0].replace("-", " "),
-                    "gender": parts[1],
-                    "age": "_".join(parts[2:]),
-                    "path": str(img_path)
-                })
+        race_codes = ["Black", "EastAsian", "Indian", "Latino", "MiddleEastern", "SoutheastAsian", "White"]
+
+        for race_code in race_codes:
+            race_dir = image_dir / race_code
+            if not race_dir.exists():
+                continue
+            for img_path in sorted(race_dir.glob("*.jpg")):
+                parts = img_path.stem.split("_")
+                if len(parts) >= 3:
+                    images.append({
+                        "race_code": parts[0],
+                        "gender": parts[1],
+                        "age_code": parts[2],
+                        "path": str(img_path),
+                        "filename": img_path.name
+                    })
         return images
 
 
@@ -180,21 +191,25 @@ def run_experiment(
                 )
 
                 # Determine status and save image
+                race_code = img_data.get("race_code", img_data.get("race", ""))
+                age_code = img_data.get("age_code", img_data.get("age", ""))
+
                 if refusal_result.is_refused:
                     status = "refused"
                     output_path = None
                 elif edit_result.success:
                     status = "success"
-                    # Save output image
-                    img_filename = naming.get_image_filename(
-                        model=model_name,
-                        race=img_data["race"],
-                        gender=img_data["gender"],
-                        age=img_data["age"],
+                    # Save output image with race subfolder
+                    output_path = naming.get_output_path(
+                        base_dir=exp_paths["images_dir"],
                         prompt_id=prompt.id,
+                        race_code=race_code,
+                        gender=img_data["gender"],
+                        age_code=age_code,
                         status=status
                     )
-                    output_path = exp_paths["images_dir"] / img_filename
+                    # Create race subfolder if needed
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
                     if edit_result.output_image:
                         edit_result.output_image.save(output_path)
                 else:
@@ -206,9 +221,9 @@ def run_experiment(
                     prompt_id=prompt.id,
                     prompt_text=prompt.prompt,
                     category=prompt.category,
-                    race=img_data["race"],
+                    race_code=race_code,
                     gender=img_data["gender"],
-                    age=img_data["age"],
+                    age_code=age_code,
                     success=edit_result.success,
                     is_refused=refusal_result.is_refused,
                     refusal_type=refusal_result.refusal_type,
@@ -225,9 +240,9 @@ def run_experiment(
                     "prompt_text": prompt.prompt,
                     "category": prompt.category,
                     "hypothesis": prompt.hypothesis,
-                    "race": img_data["race"],
+                    "race_code": race_code,
                     "gender": img_data["gender"],
-                    "age": img_data["age"],
+                    "age_code": age_code,
                     "source_image": img_data["path"],
                     "output_image": str(output_path) if output_path else None,
                     "success": edit_result.success,

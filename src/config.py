@@ -69,49 +69,105 @@ class NamingConfig:
     """
     Unified naming convention for images and results.
 
-    Format: {model}_{race}_{gender}_{age}_{prompt_id}_{status}.{ext}
+    Source images: {RaceCode}/{RaceCode}_{Gender}_{AgeCode}.jpg
+    Output images: {RaceCode}/{PromptID}_{RaceCode}_{Gender}_{AgeCode}_{status}.png
 
-    Examples:
-        - flux_White_Male_20-29_A01_success.png
-        - step1x_Black_Female_30-39_E05_refused.png
-        - qwen_East-Asian_Male_40-49_B03_success.png
+    Race codes: Black, EastAsian, Indian, Latino, MiddleEastern, SoutheastAsian, White
+    Age codes: 20s, 30s, 40s, 50s, 60s, 70plus
     """
 
-    @staticmethod
-    def get_image_filename(
-        model: str,
-        race: str,
-        gender: str,
-        age: str,
+    # Race code mapping (FairFace label -> code)
+    RACE_TO_CODE = {
+        "Black": "Black",
+        "East Asian": "EastAsian",
+        "Indian": "Indian",
+        "Latino_Hispanic": "Latino",
+        "Middle Eastern": "MiddleEastern",
+        "Southeast Asian": "SoutheastAsian",
+        "White": "White"
+    }
+
+    CODE_TO_RACE = {v: k for k, v in RACE_TO_CODE.items()}
+
+    # Age code mapping (FairFace label -> code)
+    AGE_TO_CODE = {
+        "20-29": "20s",
+        "30-39": "30s",
+        "40-49": "40s",
+        "50-59": "50s",
+        "60-69": "60s",
+        "more than 70": "70plus"
+    }
+
+    CODE_TO_AGE = {v: k for k, v in AGE_TO_CODE.items()}
+
+    @classmethod
+    def get_race_code(cls, race: str) -> str:
+        """Convert FairFace race label to code."""
+        return cls.RACE_TO_CODE.get(race, race.replace(" ", "").replace("_", ""))
+
+    @classmethod
+    def get_age_code(cls, age: str) -> str:
+        """Convert FairFace age label to code."""
+        return cls.AGE_TO_CODE.get(age, age)
+
+    @classmethod
+    def get_output_filename(
+        cls,
         prompt_id: str,
+        race_code: str,
+        gender: str,
+        age_code: str,
         status: str = "success",
         ext: str = "png"
     ) -> str:
-        """Generate standardized image filename."""
-        # Sanitize race (replace spaces with hyphens)
-        race_clean = race.replace(" ", "-").replace("/", "-")
-        return f"{model}_{race_clean}_{gender}_{age}_{prompt_id}_{status}.{ext}"
+        """
+        Generate output image filename.
+        Format: {PromptID}_{RaceCode}_{Gender}_{AgeCode}_{status}.png
+        Example: A01_Black_Male_20s_success.png
+        """
+        return f"{prompt_id}_{race_code}_{gender}_{age_code}_{status}.{ext}"
 
-    @staticmethod
-    def parse_image_filename(filename: str) -> dict:
-        """Parse image filename back to components."""
+    @classmethod
+    def get_output_path(
+        cls,
+        base_dir: Path,
+        prompt_id: str,
+        race_code: str,
+        gender: str,
+        age_code: str,
+        status: str = "success",
+        ext: str = "png"
+    ) -> Path:
+        """
+        Get full output path with race subfolder.
+        Structure: {base_dir}/{RaceCode}/{filename}
+        """
+        filename = cls.get_output_filename(prompt_id, race_code, gender, age_code, status, ext)
+        return base_dir / race_code / filename
+
+    @classmethod
+    def parse_output_filename(cls, filename: str) -> dict:
+        """Parse output image filename back to components."""
         parts = filename.rsplit(".", 1)[0].split("_")
-        if len(parts) >= 6:
+        if len(parts) >= 5:
             return {
-                "model": parts[0],
-                "race": parts[1].replace("-", " "),
+                "prompt_id": parts[0],
+                "race_code": parts[1],
                 "gender": parts[2],
-                "age": parts[3],
-                "prompt_id": parts[4],
-                "status": parts[5]
+                "age_code": parts[3],
+                "status": parts[4]
             }
         return {}
 
-    @staticmethod
-    def get_source_image_filename(race: str, gender: str, age: str) -> str:
-        """Get source image filename."""
-        race_clean = race.replace(" ", "_").replace("/", "_")
-        return f"{race_clean}_{gender}_{age}.jpg"
+    @classmethod
+    def get_source_image_path(cls, base_dir: Path, race_code: str, gender: str, age_code: str) -> Path:
+        """
+        Get source image path.
+        Structure: {base_dir}/{RaceCode}/{RaceCode}_{Gender}_{AgeCode}.jpg
+        """
+        filename = f"{race_code}_{gender}_{age_code}.jpg"
+        return base_dir / race_code / filename
 
 
 @dataclass

@@ -17,6 +17,9 @@ def main():
     parser.add_argument("--split", type=str, default="train",
                        choices=["train", "validation"],
                        help="Dataset split to download")
+    parser.add_argument("--padding", type=str, default="1.25",
+                       choices=["0.25", "1.25"],
+                       help="Padding ratio (1.25 = more context around face)")
 
     args = parser.parse_args()
     output_dir = Path(args.output_dir)
@@ -28,8 +31,8 @@ def main():
     print("="*60)
 
     # Load dataset
-    print(f"\nLoading {args.split} split...")
-    dataset = load_dataset("HuggingFaceM4/FairFace", split=args.split)
+    print(f"\nLoading {args.split} split (padding={args.padding})...")
+    dataset = load_dataset("HuggingFaceM4/FairFace", args.padding, split=args.split)
 
     print(f"Dataset size: {len(dataset)} images")
     print(f"Features: {dataset.features}")

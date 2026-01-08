@@ -116,9 +116,9 @@ class ExperimentLogger:
         prompt_id: str,
         prompt_text: str,
         category: str,
-        race: str,
+        race_code: str,
         gender: str,
-        age: str,
+        age_code: str,
         success: bool,
         is_refused: bool,
         refusal_type: Optional[str] = None,
@@ -130,10 +130,10 @@ class ExperimentLogger:
         self.stats["total"] += 1
         self.stats["by_category"][category] = self.stats["by_category"].get(category, 0) + 1
 
-        if race not in self.stats["by_race"]:
-            self.stats["by_race"][race] = 0
-            self.stats["refusals_by_race"][race] = 0
-        self.stats["by_race"][race] += 1
+        if race_code not in self.stats["by_race"]:
+            self.stats["by_race"][race_code] = 0
+            self.stats["refusals_by_race"][race_code] = 0
+        self.stats["by_race"][race_code] += 1
 
         if success and not is_refused:
             self.stats["success"] += 1
@@ -141,7 +141,7 @@ class ExperimentLogger:
         elif is_refused:
             self.stats["refused"] += 1
             self.stats["refusals_by_category"][category] += 1
-            self.stats["refusals_by_race"][race] += 1
+            self.stats["refusals_by_race"][race_code] += 1
             status = f"REFUSED ({refusal_type})"
 
             # Log refusal details
@@ -150,9 +150,9 @@ class ExperimentLogger:
                 "prompt_id": prompt_id,
                 "prompt_text": prompt_text,
                 "category": category,
-                "race": race,
+                "race_code": race_code,
                 "gender": gender,
-                "age": age,
+                "age_code": age_code,
                 "refusal_type": refusal_type,
                 "error_message": error_message,
             })
@@ -164,14 +164,14 @@ class ExperimentLogger:
             self._log_error({
                 "timestamp": datetime.now().isoformat(),
                 "prompt_id": prompt_id,
-                "race": race,
+                "race_code": race_code,
                 "error_message": error_message,
             })
 
         # Log timing
         self._log_timing({
             "prompt_id": prompt_id,
-            "race": race,
+            "race_code": race_code,
             "category": category,
             "latency_ms": latency_ms,
             "status": status,
@@ -180,7 +180,7 @@ class ExperimentLogger:
         # Console log
         progress = f"[{self.stats['total']}/{self.stats.get('total_expected', '?')}]"
         self.logger.info(
-            f"{progress} {prompt_id} | {race[:10]:10} | {category} | {status:20} | {latency_ms:.0f}ms"
+            f"{progress} {prompt_id} | {race_code[:12]:12} | {category} | {status:20} | {latency_ms:.0f}ms"
         )
 
         if output_path:
