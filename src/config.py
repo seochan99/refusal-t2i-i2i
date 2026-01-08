@@ -222,6 +222,10 @@ class ExperimentConfig:
     # Batch settings
     save_interval: int = 10  # Save results every N images
 
+    # Data settings
+    source_version: str = "final"
+    categories_filter: Optional[str] = None  # e.g., "A,B,C" or None for all
+
     # Paths
     paths: PathConfig = field(default_factory=PathConfig)
     naming: NamingConfig = field(default_factory=NamingConfig)
@@ -242,6 +246,8 @@ class ExperimentConfig:
             "guidance_scale": self.guidance_scale,
             "seed": self.seed,
             "save_interval": self.save_interval,
+            "source_version": self.source_version,
+            "categories_filter": self.categories_filter,
         }
 
     def save(self, path: Path):

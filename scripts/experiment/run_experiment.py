@@ -104,7 +104,8 @@ def run_experiment(
     device: str = "cuda",
     experiment_id: str = None,
     resume_from: int = 0,
-    source_version: str = "final"
+    source_version: str = "final",
+    categories: list = None
 ):
     """
     Execute complete I2I experiment for a single model with comprehensive logging.
@@ -115,6 +116,7 @@ def run_experiment(
         experiment_id: Unique experiment identifier (auto-generated if None)
         resume_from: Request index to resume from (for interrupted experiments)
         source_version: Source image version ("final" for selected images, or "V1-V7")
+        categories: List of categories to filter prompts (None for all categories)
     """
     # Setup paths
     path_config = PathConfig()
@@ -141,6 +143,8 @@ def run_experiment(
         experiment_id=experiment_id,
         model_name=model_name,
         device=device,
+        source_version=source_version,
+        categories_filter=",".join(categories) if categories else None,
         **model_config
     )
     config.save(exp_paths["experiment_dir"] / "config.json")
@@ -151,6 +155,7 @@ def run_experiment(
     print(f"Model: {model_name}")
     print(f"Device: {device}")
     print(f"Source Version: {source_version}")
+    print(f"Categories: {', '.join(categories) if categories else 'All (A-E)'}")
     print(f"Experiment ID: {experiment_id}")
     print(f"Output Directory: {exp_paths['experiment_dir']}")
     print(f"Resume From: {resume_from}" if resume_from > 0 else "Resume From: Beginning")
@@ -163,6 +168,11 @@ def run_experiment(
     try:
         prompts = PromptLoader(str(path_config.prompts_file))
         print(f"✓ Loaded {len(prompts)} prompts")
+
+        # Filter by categories if specified
+        if categories:
+            prompts = [p for p in prompts if p.category in categories]
+            print(f"✓ Filtered to {len(prompts)} prompts (categories: {', '.join(categories)})")
     except Exception as e:
         print(f"❌ Failed to load prompts: {e}")
         return []
@@ -423,6 +433,8 @@ Examples:
                        help="Unique experiment identifier (auto-generated if not provided)")
     parser.add_argument("--resume-from", type=int, default=0,
                        help="Resume from specific request index (for interrupted experiments)")
+    parser.add_argument("--categories", type=str, default=None,
+                       help="Filter by prompt categories (comma-separated, e.g., 'A,B,C' or 'E')")
 
     args = parser.parse_args()
 
@@ -430,10 +442,21 @@ Examples:
     if args.resume_from < 0:
         parser.error("--resume-from must be non-negative")
 
+    # Parse categories
+    categories = None
+    if args.categories:
+        categories = [c.strip().upper() for c in args.categories.split(",")]
+        valid_categories = {"A", "B", "C", "D", "E"}
+        invalid = set(categories) - valid_categories
+        if invalid:
+            parser.error(f"Invalid categories: {invalid}. Valid: A, B, C, D, E")
+
     print(f"🚀 Starting I2I Refusal Bias Experiment")
     print(f"📋 Model: {args.model}")
     print(f"💻 Device: {args.device}")
     print(f"🖼️ Source: {args.version}")
+    if categories:
+        print(f"📁 Categories: {', '.join(categories)}")
     print(f"{'-'*50}")
 
     try:
@@ -442,7 +465,8 @@ Examples:
             device=args.device,
             experiment_id=args.experiment_id,
             resume_from=args.resume_from,
-            source_version=args.version
+            source_version=args.version,
+            categories=categories
         )
 
         if results:
