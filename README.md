@@ -225,7 +225,19 @@ data/results/{model}/{experiment_id}/
 └── logs/             # Detailed logs (refusals, errors, timings)
 ```
 
-### 6. Analyze Results
+### 6. Human Review (Optional)
+
+If ensemble evaluation shows disagreements, perform human review:
+
+```bash
+# Start survey app for human review
+cd survey
+npm install
+npm run dev
+# Open http://localhost:3000 and select "Human Review" mode
+```
+
+### 7. Analyze Results
 
 ```bash
 python scripts/analyze_results.py --results-dir data/results
