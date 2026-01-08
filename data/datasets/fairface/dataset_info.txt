@@ -1,0 +1,13 @@
+FairFace Dataset
+Source: https://huggingface.co/datasets/HuggingFaceM4/FairFace
+Split: train
+Total images: 86744
+
+Race distribution:
+  0: 12287
+  1: 12319
+  2: 12233
+  3: 16527
+  4: 9216
+  5: 13367
+  6: 10795
