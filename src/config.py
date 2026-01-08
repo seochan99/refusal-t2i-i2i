@@ -284,7 +284,7 @@ MODEL_CONFIGS = {
         "use_remote_text_encoder": False,
     },
     "step1x": {
-        "num_inference_steps": 50,
+        "num_inference_steps": 28,  # Step1X requires exactly 28 steps
         "true_cfg_scale": 6.0,
         "enable_thinking": True,
         "enable_reflection": True,
