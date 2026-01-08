@@ -201,7 +201,21 @@ python app.py
 - Document selection rationale and criteria compliance
 - Finalize dataset with complete audit trail
 
-### 5. Run Experiment
+### 5. Prepare Images for Experiments
+
+```bash
+# Resize all final images to 1024x1024 (required for Step1X model)
+source venv/bin/activate
+python tools/resize_all_to_1024.py --execute
+
+# Verify all images are correctly resized
+python -c "from PIL import Image; print(Image.open('data/source_images/final/Black/Black_Female_20s.jpg').size)"
+# Should output: (1024, 1024)
+```
+
+**Note:** Image files are excluded from git tracking due to size constraints. Use the resize script to regenerate 1024×1024 images from the metadata files.
+
+### 6. Run Experiment
 
 ```bash
 # Interactive category selection (recommended)
@@ -229,7 +243,7 @@ data/results/{model}/{experiment_id}/
 └── logs/             # Detailed logs (refusals, errors, timings)
 ```
 
-### 6. Human Review (Optional)
+### 7. Human Review (Optional)
 
 If ensemble evaluation shows disagreements, perform human review:
 
@@ -247,7 +261,7 @@ npm run dev
 - **Offline Support**: Falls back to local storage if Firebase unavailable
 - **Progress Tracking**: Real-time progress updates across sessions
 
-### 7. Analyze Results (Complete Pipeline)
+### 8. Analyze Results (Complete Pipeline)
 
 #### Basic Analysis (VLM Only)
 ```bash
