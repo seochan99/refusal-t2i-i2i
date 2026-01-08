@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Version Selector</title>
+    <title>I2I Bias Study - Dataset Curator</title>
     <style>
         * {
             box-sizing: border-box;
@@ -426,7 +426,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Image Version Selector</h1>
+        <h1>I2I Bias Refusal Study - Dataset Curator</h1>
         <div class="progress-bar">
             <div class="progress-fill" id="progressFill" style="width: {{ (selected / total * 100) | round(1) }}%"></div>
         </div>
@@ -496,14 +496,11 @@
     </div>
 
     <div class="bottom-buttons">
-        <button class="export-btn secondary" onclick="exportSelections()">
-            Export Selections
-        </button>
         <button class="export-btn secondary" onclick="exportLogs()">
-            Export Logs
+            Download Selection Logs
         </button>
         <button class="export-btn primary" id="finalizeBtn" onclick="finalizeSelections()">
-            Finalize & Submit
+            Finalize & Save Dataset
         </button>
     </div>
 
@@ -763,19 +760,41 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        alert(`✅ Finalization Complete!\n\n📁 ${data.copied} images copied to:\n${data.final_dir}\n\n📊 Selection logs saved: ${data.logs_saved} entries\n\n🔍 All logs and metadata are now available for verification.`);
-                        btn.textContent = '✅ Completed';
+                        const successMsg = `🎉 Dataset Creation Complete!\n\n` +
+                            `📦 Dataset ID: ${data.dataset_id}\n` +
+                            `📁 ${data.copied}/${data.expected} images saved to:\n${data.final_dir}\n` +
+                            `📋 ${data.logs_saved} selection logs archived\n` +
+                            `⏰ Created: ${new Date(data.timestamp).toLocaleString()}\n\n` +
+                            `✅ Full audit trail available for verification\n` +
+                            `🔍 All selection criteria and rationale preserved\n\n` +
+                            `The dataset is ready for research use!`;
+
+                        alert(successMsg);
+                        btn.textContent = `✅ ${data.dataset_id}`;
                         btn.style.background = '#45a049';
+
+                        // Disable further interactions to prevent accidental changes
+                        document.querySelectorAll('.image-card').forEach(card => {
+                            card.style.pointerEvents = 'none';
+                            card.style.opacity = '0.6';
+                        });
+
+                        // Update status display
+                        document.getElementById('selectedCount').textContent = data.copied;
+                        document.getElementById('remainingCount').textContent = '0';
+
+                        console.log(`Dataset ${data.dataset_id} created successfully with ${data.logs_saved} audit logs`);
+
                     } else {
                         alert('❌ Error: ' + data.error);
                         btn.disabled = false;
-                        btn.textContent = 'Finalize & Submit';
+                        btn.textContent = 'Finalize & Save Dataset';
                     }
                 })
                 .catch(err => {
-                    alert('Error: ' + err.message);
+                    alert('❌ Error: ' + err.message);
                     btn.disabled = false;
-                    btn.textContent = 'Finalize to /final';
+                    btn.textContent = 'Finalize & Save Dataset';
                 });
         }
 

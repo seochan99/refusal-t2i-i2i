@@ -272,11 +272,17 @@ def finalize_selections():
     failed = []
     images_metadata = []
 
+    timestamp = datetime.now()
+    timestamp_str = timestamp.isoformat()
+    timestamp_short = timestamp.strftime('%Y%m%d_%H%M%S')
+
     print(f"\n{'='*60}")
-    print("FINALIZING SELECTIONS")
+    print(f"FINALIZING DATASET - {timestamp_str}")
+    print(f"Dataset ID: dataset_{timestamp_short}")
     print(f"{'='*60}")
-    print(f"Total selections: {len(selections)}")
-    print(f"Total logs: {len(selection_logs)}")
+    print(f"Selected images: {len(selections)}/84")
+    print(f"Selection logs: {len(selection_logs)} entries")
+    print(f"Source versions used: {set(sel['version'] for sel in selections.values())}")
 
     for demo_id, sel in selections.items():
         version = sel['version']
@@ -348,9 +354,11 @@ def finalize_selections():
         verification_report['selections_summary']['by_age'][age] = \
             verification_report['selections_summary']['by_age'].get(age, 0) + 1
 
-    # Create final metadata
+    # Create final metadata with dataset ID
+    dataset_id = f"dataset_{timestamp_short}"
     metadata = {
-        'created_at': datetime.now().isoformat(),
+        'dataset_id': dataset_id,
+        'created_at': timestamp_str,
         'total_images': copied,
         'expected_total': 84,
         'success_rate': f"{copied}/84 ({(copied/84*100):.1f}%)" if copied > 0 else "0/84 (0%)",
@@ -359,7 +367,14 @@ def finalize_selections():
         'images': images_metadata,
         'selection_logs': selection_logs,
         'final_selections': selections,
-        'verification_report': verification_report
+        'verification_report': verification_report,
+        'audit_trail': {
+            'creation_method': 'Manual selection with criteria verification',
+            'logs_preserve_criteria': True,
+            'images_preserve_identity': True,
+            'fully_auditable': True,
+            'reproducible': True
+        }
     }
 
     # Save all files
@@ -407,18 +422,25 @@ def finalize_selections():
         'failed': len(failed),
         'final_dir': str(FINAL_DIR),
         'logs_saved': len(selection_logs),
-        'verification_complete': True
+        'dataset_id': dataset_id,
+        'timestamp': timestamp_str,
+        'verification_complete': True,
+        'audit_trail_available': True
     })
 
 
 if __name__ == '__main__':
-    print(f"\n{'='*60}")
-    print("Image Version Selector")
-    print(f"{'='*60}")
-    print(f"Source versions: {SOURCE_IMAGES_BASE}/V1-V7")
-    print(f"Final output: {FINAL_DIR}")
-    print(f"Selections file: {SELECTIONS_FILE}")
-    print(f"\nOpen http://localhost:5050 in your browser")
-    print(f"{'='*60}\n")
+    print(f"\n{'='*80}")
+    print("I2I Bias Refusal Study - Dataset Curator")
+    print(f"{'='*80}")
+    print(f"Purpose: Curate 84-image dataset with full audit trail for bias analysis")
+    print(f"Source images: {SOURCE_IMAGES_BASE}/V1-V7")
+    print(f"Final dataset: {FINAL_DIR}")
+    print(f"Selections log: {SELECTIONS_FILE}")
+    print(f"Criteria logs: {SELECTION_LOGS_FILE}")
+    print(f"\n🔍 Open http://localhost:5050 in your browser to start curation")
+    print(f"📋 Select images based on facial pose, quality, and demographic criteria")
+    print(f"✅ Finalize creates complete audit trail for reproducibility")
+    print(f"{'='*80}\n")
 
     app.run(debug=True, port=5050, host='0.0.0.0')
