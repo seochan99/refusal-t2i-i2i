@@ -99,10 +99,12 @@ $$E(r, p) = P(\text{VLM}(I_{\text{out}}, p) = \text{absent} \mid \mathcal{M}(I_0
 **Definition**: A **novel metric** quantifying the difference in refusal rates between stereotype-congruent and incongruent edits
 
 **Basic Formula**:
-$$\text{SCS}(p) = \frac{R(\mathcal{R}_{\text{incong}}, p) - R(\mathcal{R}_{\text{cong}}, p)}{R_{\text{baseline}}}$$
+
+$$\text{SCS}(p) = \frac{R(\mathcal{R}\_{\text{incong}}, p) - R(\mathcal{R}\_{\text{cong}}, p)}{R\_{\text{baseline}}}$$
 
 **Log-Odds Normalized Version** (more robust):
-$$\text{SCS}_{\text{log}} = \log\left(\frac{\text{OR}_{\text{incong}}}{\text{OR}_{\text{cong}}}\right)$$
+
+$$\text{SCS}\_{\text{log}} = \log\left(\frac{\text{OR}\_{\text{incong}}}{\text{OR}\_{\text{cong}}}\right)$$
 
 **Interpretation**:
 | SCS Value | Meaning |

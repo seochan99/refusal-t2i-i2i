@@ -94,10 +94,12 @@ $$E(r, p) = P(\text{VLM}(I_{\text{out}}, p) = \text{absent} \mid \mathcal{M}(I_0
 **정의**: 문화적 고정관념과 일치하는 편집 vs 불일치 편집의 거부율 차이를 정량화하는 **새로운 메트릭**
 
 **기본 수식**:
-$$\text{SCS}(p) = \frac{R(\mathcal{R}_{\text{incong}}, p) - R(\mathcal{R}_{\text{cong}}, p)}{R_{\text{baseline}}}$$
+
+$$\text{SCS}(p) = \frac{R(\mathcal{R}\_{\text{incong}}, p) - R(\mathcal{R}\_{\text{cong}}, p)}{R\_{\text{baseline}}}$$
 
 **Log-Odds 정규화 버전** (더 robust):
-$$\text{SCS}_{\text{log}} = \log\left(\frac{\text{OR}_{\text{incong}}}{\text{OR}_{\text{cong}}}\right)$$
+
+$$\text{SCS}\_{\text{log}} = \log\left(\frac{\text{OR}\_{\text{incong}}}{\text{OR}\_{\text{cong}}}\right)$$
 
 **해석**:
 | SCS 값 | 의미 |
