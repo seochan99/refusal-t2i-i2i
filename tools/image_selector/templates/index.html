@@ -436,19 +436,19 @@
         </div>
 
         <div class="selection-criteria">
-            <h3>선별 기준 (Selection Criteria)</h3>
+            <h3>Selection Criteria</h3>
             <div class="criteria-list">
                 <div class="criterion">
-                    <strong>얼굴 자세:</strong> 정면 얼굴(frontal face)만 선별, 측면/반측면(side profile) 제외
+                    <strong>Facial Pose:</strong> Frontal faces only, exclude side/partial profiles
                 </div>
                 <div class="criterion">
-                    <strong>이미지 품질:</strong> 선명한 초점, 적절한 조명, 얼굴 특징이 명확하게 식별 가능
+                    <strong>Image Quality:</strong> Clear focus, proper lighting, facial features clearly identifiable
                 </div>
                 <div class="criterion">
-                    <strong>표정 및 자세:</strong> 중립적 표정, 고개가 곧게 세워진 자세
+                    <strong>Expression & Posture:</strong> Neutral expression, upright head posture
                 </div>
                 <div class="criterion">
-                    <strong>제외 기준:</strong> 블러된 이미지, 어두운 조명, 얼굴이 가려진 경우, 저해상도 이미지
+                    <strong>Exclusion Criteria:</strong> Blurred images, poor lighting, obstructed faces, low resolution
                 </div>
             </div>
         </div>
@@ -497,13 +497,13 @@
 
     <div class="bottom-buttons">
         <button class="export-btn secondary" onclick="exportSelections()">
-            Export JSON
+            Export Selections
         </button>
         <button class="export-btn secondary" onclick="exportLogs()">
             Export Logs
         </button>
         <button class="export-btn primary" id="finalizeBtn" onclick="finalizeSelections()">
-            Finalize to /final
+            Finalize & Submit
         </button>
     </div>
 
@@ -511,7 +511,7 @@
     <div id="selectionModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>선택 이유 및 기준 준수 확인</h3>
+                <h3>Selection Rationale & Criteria Verification</h3>
                 <span class="modal-close" onclick="closeModal()">&times;</span>
             </div>
             <div class="modal-body">
@@ -524,55 +524,55 @@
                 </div>
 
                 <div class="criteria-checklist">
-                    <h4>선별 기준 준수 확인</h4>
+                    <h4>Criteria Compliance Verification</h4>
                     <div class="criteria-item">
                         <label>
                             <input type="checkbox" id="frontalFace" checked>
-                            정면 얼굴 (Frontal face pose)
+                            Frontal face pose
                         </label>
                     </div>
                     <div class="criteria-item">
                         <label>
                             <input type="checkbox" id="clearFocus" checked>
-                            선명한 초점 (Clear focus/sharpness)
+                            Clear focus and sharpness
                         </label>
                     </div>
                     <div class="criteria-item">
                         <label>
                             <input type="checkbox" id="properLighting" checked>
-                            적절한 조명 (Proper lighting)
+                            Proper lighting conditions
                         </label>
                     </div>
                     <div class="criteria-item">
                         <label>
                             <input type="checkbox" id="identifiableFeatures" checked>
-                            얼굴 특징 명확 식별 가능 (Facial features clearly identifiable)
+                            Facial features clearly identifiable
                         </label>
                     </div>
                     <div class="criteria-item">
                         <label>
                             <input type="checkbox" id="neutralExpression" checked>
-                            중립적 표정 (Neutral expression)
+                            Neutral expression
                         </label>
                     </div>
                     <div class="criteria-item">
                         <label>
                             <input type="checkbox" id="uprightPosture" checked>
-                            고개 곧게 세워진 자세 (Upright head posture)
+                            Upright head posture
                         </label>
                     </div>
                 </div>
 
                 <div class="selection-notes">
                     <label for="selectionNotes">
-                        <h4>선택 이유 및 추가 메모 (선택사항)</h4>
+                        <h4>Selection Rationale & Notes (Optional)</h4>
                     </label>
-                    <textarea id="selectionNotes" placeholder="이 이미지를 선택한 이유나 특이사항을 기록하세요..."></textarea>
+                    <textarea id="selectionNotes" placeholder="Record the reason for selecting this image or any special notes..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal()">취소</button>
-                <button class="btn btn-primary" onclick="confirmSelection()">선택 완료</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmSelection()">Confirm Selection</button>
             </div>
         </div>
     </div>
@@ -751,7 +751,7 @@
                 return;
             }
 
-            if (!confirm('This will copy all selected images to the final/ folder.\nExisting final/ folder will be replaced.\n\nContinue?')) {
+            if (!confirm('This will copy all selected images to the final/ folder and save complete selection logs.\nExisting final/ folder will be replaced.\n\nContinue?')) {
                 return;
             }
 
@@ -763,13 +763,13 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        alert(`Success! ${data.copied} images copied to:\n${data.final_dir}\n\nSelection logs saved: ${data.logs_saved} entries`);
-                        btn.textContent = 'Done!';
+                        alert(`✅ Finalization Complete!\n\n📁 ${data.copied} images copied to:\n${data.final_dir}\n\n📊 Selection logs saved: ${data.logs_saved} entries\n\n🔍 All logs and metadata are now available for verification.`);
+                        btn.textContent = '✅ Completed';
                         btn.style.background = '#45a049';
                     } else {
-                        alert('Error: ' + data.error);
+                        alert('❌ Error: ' + data.error);
                         btn.disabled = false;
-                        btn.textContent = 'Finalize to /final';
+                        btn.textContent = 'Finalize & Submit';
                     }
                 })
                 .catch(err => {

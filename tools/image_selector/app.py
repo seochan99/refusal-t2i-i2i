@@ -253,8 +253,9 @@ def export_logs():
 
 @app.route('/api/finalize', methods=['POST'])
 def finalize_selections():
-    """Copy selected images to final/ folder and save complete logs."""
+    """Copy selected images to final/ folder and save complete verification logs."""
     selections = load_selections()
+    selection_logs = load_selection_logs()
 
     if len(selections) != 84:
         return jsonify({
@@ -265,9 +266,17 @@ def finalize_selections():
     # Clear and create final directory
     if FINAL_DIR.exists():
         shutil.rmtree(FINAL_DIR)
+    FINAL_DIR.mkdir(parents=True, exist_ok=True)
 
     copied = 0
+    failed = []
     images_metadata = []
+
+    print(f"\n{'='*60}")
+    print("FINALIZING SELECTIONS")
+    print(f"{'='*60}")
+    print(f"Total selections: {len(selections)}")
+    print(f"Total logs: {len(selection_logs)}")
 
     for demo_id, sel in selections.items():
         version = sel['version']
@@ -284,55 +293,121 @@ def finalize_selections():
         dst_dir.mkdir(parents=True, exist_ok=True)
         dst_path = dst_dir / filename
 
-        # Copy file
+        # Copy file with verification
         if src_path.exists():
-            shutil.copy2(src_path, dst_path)
-            copied += 1
+            try:
+                shutil.copy2(src_path, dst_path)
+                copied += 1
+                print(f"✓ Copied: {demo_id} -> {version}")
 
-            images_metadata.append({
-                'filename': filename,
-                'race_code': race,
-                'gender': gender,
-                'age_code': age,
-                'source_version': version,
-                'path': str(dst_path)
-            })
+                images_metadata.append({
+                    'filename': filename,
+                    'race_code': race,
+                    'gender': gender,
+                    'age_code': age,
+                    'source_version': version,
+                    'source_path': str(src_path),
+                    'final_path': str(dst_path),
+                    'file_size': dst_path.stat().st_size if dst_path.exists() else 0
+                })
+            except Exception as e:
+                failed.append(f"{demo_id}: {str(e)}")
+                print(f"✗ Failed: {demo_id} - {str(e)}")
+        else:
+            failed.append(f"{demo_id}: Source file not found")
+            print(f"✗ Missing: {demo_id} - Source file not found")
 
-    # Load complete selection logs
-    selection_logs = load_selection_logs()
+    # Create comprehensive verification report
+    verification_report = {
+        'finalization_timestamp': datetime.now().isoformat(),
+        'total_expected': 84,
+        'total_copied': copied,
+        'total_failed': len(failed),
+        'failed_items': failed,
+        'selections_summary': {
+            'by_version': {},
+            'by_race': {},
+            'by_gender': {},
+            'by_age': {}
+        }
+    }
 
-    # Save metadata with complete logs
+    # Analyze selections by categories
+    for demo_id, sel in selections.items():
+        version = sel['version']
+        race = sel['race']
+        gender = sel['gender']
+        age = sel['age']
+
+        verification_report['selections_summary']['by_version'][version] = \
+            verification_report['selections_summary']['by_version'].get(version, 0) + 1
+        verification_report['selections_summary']['by_race'][race] = \
+            verification_report['selections_summary']['by_race'].get(race, 0) + 1
+        verification_report['selections_summary']['by_gender'][gender] = \
+            verification_report['selections_summary']['by_gender'].get(gender, 0) + 1
+        verification_report['selections_summary']['by_age'][age] = \
+            verification_report['selections_summary']['by_age'].get(age, 0) + 1
+
+    # Create final metadata
     metadata = {
         'created_at': datetime.now().isoformat(),
         'total_images': copied,
+        'expected_total': 84,
+        'success_rate': f"{copied}/84 ({(copied/84*100):.1f}%)" if copied > 0 else "0/84 (0%)",
         'source_versions': dict((k, v['version']) for k, v in selections.items()),
         'folder_structure': '{RaceCode}/{RaceCode}_{Gender}_{AgeCode}.jpg',
         'images': images_metadata,
         'selection_logs': selection_logs,
-        'final_selections': selections
+        'final_selections': selections,
+        'verification_report': verification_report
     }
 
+    # Save all files
     with open(FINAL_DIR / 'metadata.json', 'w') as f:
         json.dump(metadata, f, indent=2)
 
-    # Also save complete logs separately
     with open(FINAL_DIR / 'selection_logs_complete.json', 'w') as f:
         json.dump({
             'export_timestamp': datetime.now().isoformat(),
             'total_logs': len(selection_logs),
-            'selections_summary': selections,
+            'logs_by_action': {
+                'select': len([l for l in selection_logs if l.get('action') == 'select']),
+                'select_with_log': len([l for l in selection_logs if l.get('action') == 'select_with_log']),
+                'deselect': len([l for l in selection_logs if l.get('action') == 'deselect']),
+                'select_basic': len([l for l in selection_logs if l.get('action') == 'select_basic'])
+            },
             'detailed_logs': selection_logs
         }, f, indent=2)
 
-    # Copy the ongoing logs file to final folder for backup
+    with open(FINAL_DIR / 'verification_report.json', 'w') as f:
+        json.dump(verification_report, f, indent=2)
+
+    # Backup original files
+    if SELECTIONS_FILE.exists():
+        shutil.copy2(SELECTIONS_FILE, FINAL_DIR / 'selections_backup.json')
     if SELECTION_LOGS_FILE.exists():
-        shutil.copy2(SELECTION_LOGS_FILE, FINAL_DIR / 'selection_logs_backup.json')
+        shutil.copy2(SELECTION_LOGS_FILE, FINAL_DIR / 'logs_backup.json')
+
+    print(f"\n{'='*60}")
+    print("FINALIZATION COMPLETE")
+    print(f"{'='*60}")
+    print(f"Images copied: {copied}/84")
+    print(f"Logs saved: {len(selection_logs)}")
+    print(f"Final directory: {FINAL_DIR}")
+    if failed:
+        print(f"Failed items: {len(failed)}")
+        for fail in failed:
+            print(f"  - {fail}")
+    print(f"{'='*60}\n")
 
     return jsonify({
         'success': True,
         'copied': copied,
+        'expected': 84,
+        'failed': len(failed),
         'final_dir': str(FINAL_DIR),
-        'logs_saved': len(selection_logs)
+        'logs_saved': len(selection_logs),
+        'verification_complete': True
     })
 
 
