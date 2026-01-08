@@ -203,17 +203,16 @@ python app.py
 
 ### 5. Prepare Images for Experiments
 
-```bash
-# Resize all final images to 1024x1024 (required for Step1X model)
-source venv/bin/activate
-python tools/resize_all_to_1024.py --execute
+**Images are already prepared and included in the repository!** ✅
 
-# Verify all images are correctly resized
+```bash
+# Verify all images are correctly sized (1024x1024)
+source venv/bin/activate
 python -c "from PIL import Image; print(Image.open('data/source_images/final/Black/Black_Female_20s.jpg').size)"
 # Should output: (1024, 1024)
 ```
 
-**Note:** Image files are excluded from git tracking due to size constraints. Use the resize script to regenerate 1024×1024 images from the metadata files.
+**Note:** All 84 dataset images (38MB total) are included in git tracking for complete research reproducibility. Images are pre-resized to 1024×1024 pixels as required by Step1X model.
 
 ### 6. Run Experiment
 
