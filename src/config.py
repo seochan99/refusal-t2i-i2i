@@ -221,8 +221,8 @@ class ExperimentConfig:
     seed: int = 42
 
     # Model-specific settings
-    enable_thinking: bool = True  # Step1X
-    enable_reflection: bool = True  # Step1X
+    enable_thinking: bool = False  # Step1X - Disabled for debugging
+    enable_reflection: bool = False  # Step1X - Disabled for debugging
     use_quantized: bool = False  # FLUX
     use_remote_text_encoder: bool = False  # FLUX
 
@@ -286,8 +286,9 @@ MODEL_CONFIGS = {
     "step1x": {
         "num_inference_steps": 28,  # Step1X requires exactly 28 steps
         "true_cfg_scale": 6.0,
-        "enable_thinking": True,
-        "enable_reflection": True,
+        "enable_thinking": False,  # Disabled for debugging
+        "enable_reflection": False,  # Disabled for debugging
+        "use_region_e": False,  # Disabled for debugging
     },
     "qwen": {
         "num_inference_steps": 40,

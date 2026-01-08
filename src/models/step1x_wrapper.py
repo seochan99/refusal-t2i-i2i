@@ -32,9 +32,9 @@ class Step1XWrapper(I2IModel):
     def __init__(
         self,
         device: str = "cuda",
-        enable_thinking: bool = True,
-        enable_reflection: bool = True,
-        use_region_e: bool = True
+        enable_thinking: bool = False,  # Disabled for debugging
+        enable_reflection: bool = False,  # Disabled for debugging
+        use_region_e: bool = False  # Disabled for debugging
     ):
         super().__init__(model_name="Step1X-Edit-v1p2", device=device)
         self.pipe = None
@@ -160,11 +160,18 @@ class Step1XWrapper(I2IModel):
             latency_ms = (time.time() - start_time) * 1000
             error_msg = str(e).lower()
 
-            # Print detailed error for debugging
-            print(f"Step1X Error: {str(e)}")
-            print(f"Error type: {type(e).__name__}")
+            # Print detailed error for debugging - CRITICAL for Step1X debugging
+            print("🚨 STEP1X CRITICAL ERROR 🚨")
+            print(f"❌ Error Type: {type(e).__name__}")
+            print(f"❌ Error Message: {str(e)}")
+            print(f"❌ Prompt: '{prompt[:100]}{'...' if len(prompt) > 100 else ''}'")
+            print(f"❌ Image Size: {getattr(source_image, 'size', 'Unknown')}")
+            print(f"❌ Config: steps={num_inference_steps}, cfg={true_cfg_scale}")
+            print(f"❌ Thinking: {self.enable_thinking}, Reflection: {self.enable_reflection}")
+            print("❌ Full Traceback:")
             import traceback
             traceback.print_exc()
+            print("🚨 END CRITICAL ERROR 🚨")
 
             if any(kw in error_msg for kw in ["safety", "policy", "inappropriate", "blocked", "nsfw"]):
                 return EditResult(
