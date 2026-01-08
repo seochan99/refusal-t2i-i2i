@@ -42,6 +42,12 @@ yarn-error.log*
 .next/
 out/
 
+# Keep dataset images for reproducibility
+# (38MB total - within GitHub limits)
+
+# BFG report files
+..bfg-report/
+
 # Temporary/scratch files
 Untitled*
 *.tmp
