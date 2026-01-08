@@ -248,15 +248,37 @@ class ExperimentLogger:
     def log_checkpoint(self, message: str = ""):
         """Log a checkpoint."""
         elapsed = datetime.now() - self.start_time if self.start_time else None
+        
+        # Format elapsed time
+        if elapsed:
+            hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            elapsed_str = f"{hours}h {minutes}m {seconds}s"
+            
+            # Calculate ETA if we have expected total
+            if self.stats.get("total_expected") and self.stats["total"] > 0:
+                avg_time_per_request = elapsed.total_seconds() / self.stats["total"]
+                remaining_requests = self.stats["total_expected"] - self.stats["total"]
+                remaining_seconds = avg_time_per_request * remaining_requests
+                eta_hours, eta_remainder = divmod(int(remaining_seconds), 3600)
+                eta_minutes, eta_seconds = divmod(eta_remainder, 60)
+                eta_str = f"{eta_hours}h {eta_minutes}m {eta_seconds}s"
+            else:
+                eta_str = "N/A"
+        else:
+            elapsed_str = "N/A"
+            eta_str = "N/A"
+        
         self.logger.info("-" * 40)
         self.logger.info(f"CHECKPOINT: {message}")
-        self.logger.info(f"  Total: {self.stats['total']}")
+        self.logger.info(f"  Total: {self.stats['total']}/{self.stats.get('total_expected', '?')}")
         self.logger.info(f"  Success: {self.stats['success']}")
         self.logger.info(f"  Unchanged: {self.stats['unchanged']}")
         self.logger.info(f"  Refused: {self.stats['refused']}")
         self.logger.info(f"  Errors: {self.stats['errors']}")
-        if elapsed:
-            self.logger.info(f"  Elapsed: {elapsed}")
+        self.logger.info(f"  Elapsed: {elapsed_str}")
+        if eta_str != "N/A":
+            self.logger.info(f"  ETA: {eta_str}")
         self.logger.info("-" * 40)
 
     def end_experiment(self) -> dict:
@@ -324,15 +346,23 @@ class ExperimentLogger:
         # Log summary
         unchanged_rate = self.stats["unchanged"] / total if total > 0 else 0
 
+        # Format elapsed time
+        if elapsed:
+            hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            duration_str = f"{hours}h {minutes}m {seconds}s"
+        else:
+            duration_str = "N/A"
+
         self.logger.info("=" * 60)
         self.logger.info("EXPERIMENT COMPLETE")
         self.logger.info("=" * 60)
-        self.logger.info(f"Total: {total}")
+        self.logger.info(f"Total Requests: {total}")
         self.logger.info(f"Success: {self.stats['success']} ({success_rate:.1%})")
         self.logger.info(f"Unchanged: {self.stats['unchanged']} ({unchanged_rate:.1%})")
         self.logger.info(f"Refused: {self.stats['refused']} ({refusal_rate:.1%})")
         self.logger.info(f"Errors: {self.stats['errors']}")
-        self.logger.info(f"Duration: {elapsed}")
+        self.logger.info(f"Total Duration: {duration_str}")
         self.logger.info("")
         self.logger.info("Refusal Rate by Race:")
         for race, rate in sorted(summary["refusal_rate_by_race"].items(), key=lambda x: -x[1]):
