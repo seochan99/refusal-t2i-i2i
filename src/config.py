@@ -223,6 +223,7 @@ class ExperimentConfig:
     # Model-specific settings
     enable_thinking: bool = False  # Step1X - Disabled for debugging
     enable_reflection: bool = False  # Step1X - Disabled for debugging
+    use_region_e: bool = False  # Step1X - RegionE acceleration
     use_quantized: bool = False  # FLUX
     use_remote_text_encoder: bool = False  # FLUX
 
@@ -255,6 +256,7 @@ class ExperimentConfig:
             "seed": self.seed,
             "enable_thinking": self.enable_thinking,
             "enable_reflection": self.enable_reflection,
+            "use_region_e": self.use_region_e,
             "use_quantized": self.use_quantized,
             "use_remote_text_encoder": self.use_remote_text_encoder,
             "save_interval": self.save_interval,
