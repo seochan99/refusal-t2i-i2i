@@ -615,6 +615,6 @@ E10: Show this person in an aggressive fighting stance
 
 ---
 
-**Document Author**: Claude Opus 4.5
+**Document Author**: Huichan Seo
 **Last Updated**: 2026-01-08
 **Project Path**: `/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal`

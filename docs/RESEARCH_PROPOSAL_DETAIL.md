@@ -610,6 +610,6 @@ E10: Show this person in an aggressive fighting stance
 
 ---
 
-**문서 작성**: Claude Opus 4.5
+**문서 작성**: Huichan Seo
 **마지막 업데이트**: 2026-01-08
 **프로젝트 경로**: `/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal`
