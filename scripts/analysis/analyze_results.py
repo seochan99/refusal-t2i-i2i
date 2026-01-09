@@ -19,6 +19,7 @@ import pandas as pd
 import sys
 from typing import Optional, Dict, Any
 from datetime import datetime
+from scipy import stats
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -27,6 +28,7 @@ from src.evaluation.metrics import DisparityMetrics, StereotypeCongruenceScore
 from src.analysis.statistical import StatisticalAnalyzer, VLMCalibration
 from src.analysis.sensitivity import SensitivityAnalyzer
 from src.analysis.visualization import ResultsVisualizer
+from src.config import PathConfig
 
 
 def load_human_review_results_from_firebase() -> pd.DataFrame:
@@ -218,6 +220,8 @@ def load_vlm_results(results_dir: str, model: str = None) -> pd.DataFrame:
         if f.exists():
             with open(f) as fp:
                 results = json.load(fp)
+                for r in results:
+                    r["results_file"] = str(f)
                 all_results.extend(results)
 
     df = pd.DataFrame(all_results)
@@ -244,6 +248,90 @@ def load_vlm_results(results_dir: str, model: str = None) -> pd.DataFrame:
     return df
 
 
+def load_edit_difficulty(df: pd.DataFrame) -> pd.DataFrame:
+    """Attach edit-difficulty metrics from edit_difficulty.json files."""
+    if "output_image" not in df.columns or "results_file" not in df.columns:
+        return df
+
+    difficulty_map = {}
+    for results_file in df["results_file"].dropna().unique():
+        diff_path = Path(results_file).parent / "edit_difficulty.json"
+        if not diff_path.exists():
+            continue
+
+        with diff_path.open() as f:
+            payload = json.load(f)
+        for item in payload.get("metrics", []):
+            key = item.get("output_image")
+            metrics = item.get("metrics", {})
+            if key and key not in difficulty_map:
+                difficulty_map[key] = metrics
+
+    if not difficulty_map:
+        return df
+
+    df["edit_l1"] = df["output_image"].map(lambda p: difficulty_map.get(p, {}).get("l1_mean"))
+    df["edit_l2"] = df["output_image"].map(lambda p: difficulty_map.get(p, {}).get("l2_mean"))
+    df["edit_psnr"] = df["output_image"].map(lambda p: difficulty_map.get(p, {}).get("psnr"))
+    df["edit_ssim"] = df["output_image"].map(lambda p: difficulty_map.get(p, {}).get("ssim"))
+    df["edit_hash_diff"] = df["output_image"].map(lambda p: difficulty_map.get(p, {}).get("hash_diff"))
+
+    return df
+
+
+def summarize_unchanged(df: pd.DataFrame) -> dict:
+    """Summarize unchanged rates by race/category for edit difficulty diagnostics."""
+    if "is_unchanged" not in df.columns:
+        return {}
+
+    summary = {
+        "overall_rate": float(df["is_unchanged"].mean())
+    }
+
+    by_race = df.groupby("race")["is_unchanged"].mean().to_dict()
+    by_category = df.groupby("category")["is_unchanged"].mean().to_dict()
+
+    summary["by_race"] = {k: float(v) for k, v in by_race.items()}
+    summary["by_category"] = {k: float(v) for k, v in by_category.items()}
+    return summary
+
+
+def analyze_edit_difficulty(df: pd.DataFrame, analyzer: StatisticalAnalyzer) -> dict:
+    """Analyze edit difficulty metrics and control for them."""
+    required_cols = ["edit_l1", "edit_hash_diff"]
+    if not all(col in df.columns for col in required_cols):
+        return {}
+
+    results = {}
+
+    # Correlations with refusal and erasure
+    for metric in ["edit_l1", "edit_hash_diff", "edit_ssim", "edit_psnr"]:
+        if metric in df.columns:
+            valid = df[[metric, "is_refused"]].dropna()
+            if not valid.empty:
+                corr, p_value = stats.spearmanr(valid[metric], valid["is_refused"])
+                results[f"{metric}_refusal_corr"] = {"rho": float(corr), "p_value": float(p_value)}
+
+            if "is_erased" in df.columns:
+                non_refused = df[~df["is_refused"]]
+                valid = non_refused[[metric, "is_erased"]].dropna()
+                if not valid.empty:
+                    corr, p_value = stats.spearmanr(valid[metric], valid["is_erased"])
+                    results[f"{metric}_erasure_corr"] = {"rho": float(corr), "p_value": float(p_value)}
+
+    # Logistic regression with edit difficulty controls
+    if "is_refused" in df.columns:
+        formula = "is_refused ~ C(race) + C(category) + edit_l1 + edit_hash_diff"
+        results["refusal_model_with_difficulty"] = analyzer._logistic_regression(df, formula)
+
+    if "is_erased" in df.columns:
+        non_refused = df[~df["is_refused"]]
+        formula = "is_erased ~ C(race) + C(category) + edit_l1 + edit_hash_diff"
+        results["erasure_model_with_difficulty"] = analyzer._logistic_regression(non_refused, formula)
+
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Analyze I2I Refusal Bias Results - Complete Pipeline",
@@ -263,7 +351,7 @@ Examples:
   python scripts/analysis/analyze_results.py --include-human-review --publication-ready
         """
     )
-    parser.add_argument("--results-dir", type=str, default="data/results",
+    parser.add_argument("--results-dir", type=str, default=None,
                        help="Directory with VLM results JSON files")
     parser.add_argument("--model", type=str, default=None,
                        help="Specific model to analyze (or all if not specified)")
@@ -276,6 +364,8 @@ Examples:
                        help="Qwen VLM model size: 30B (default, production) or 8B (local testing)")
     parser.add_argument("--include-human-review", action="store_true",
                        help="Include human review corrections from Firebase/survey")
+    parser.add_argument("--include-edit-difficulty", action="store_true",
+                       help="Attach edit-difficulty metrics (edit_difficulty.json)")
     parser.add_argument("--publication-ready", action="store_true",
                        help="Generate publication-ready figures and tables")
     parser.add_argument("--export-csv", action="store_true",
@@ -286,9 +376,11 @@ Examples:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    results_dir = args.results_dir or str(PathConfig().results_dir)
+
     # Load VLM results
     print("🔍 Loading VLM ensemble results...")
-    vlm_df = load_vlm_results(args.results_dir, args.model)
+    vlm_df = load_vlm_results(results_dir, args.model)
     print(f"✅ Loaded {len(vlm_df)} VLM results")
 
     # Load and integrate human review results if requested
@@ -312,11 +404,21 @@ Examples:
         final_df['final_judgment'] = final_df['ensemble_result']
         final_df['correction_type'] = 'none'
 
+    # Optionally attach edit-difficulty metrics
+    if args.include_edit_difficulty:
+        final_df = load_edit_difficulty(final_df)
+
     # Export final dataset if requested
     if args.export_csv:
         csv_path = output_dir / "final_corrected_dataset.csv"
         final_df.to_csv(csv_path, index=False)
         print(f"💾 Exported final dataset to: {csv_path}")
+
+    # Normalize image_id for repeated-measures analysis
+    if "image_id" not in final_df.columns and "source_image" in final_df.columns:
+        final_df["image_id"] = final_df["source_image"].apply(
+            lambda p: Path(p).stem if isinstance(p, str) and p else None
+        )
 
     # Initialize analyzers
     analyzer = StatisticalAnalyzer()
@@ -337,6 +439,8 @@ Examples:
     print("\n" + "="*60)
     print("ANALYSIS RESULTS")
     print("="*60)
+
+    df = final_df.copy()
 
     # 1. Baseline Validation (H1)
     print("\n1. BASELINE VALIDATION (Category A)")
@@ -433,7 +537,95 @@ Examples:
         visualizer.plot_scs_scores(scs_results)
         print("   ✓ SCS scores")
 
-    # 10. Save comprehensive analysis report
+    # 10. Mixed-Effects Logistic Regression
+    print("\n10. MIXED-EFFECTS LOGISTIC REGRESSION")
+    print("-"*40)
+    mixed_effects_results = {}
+    if "image_id" in df.columns:
+        print("   Running with image_id as random effect...")
+        me_result = analyzer.mixed_effects_logistic(
+            df,
+            formula="is_refused ~ C(race) + C(category)",
+            random_effects=["image_id"]
+        )
+        if "error" not in me_result:
+            print(f"   Model converged: {me_result['converged']}")
+            print(f"   AIC: {me_result['model_fit']['aic']:.2f}")
+            print(f"   BIC: {me_result['model_fit']['bic']:.2f}")
+            print(f"   Number of groups: {me_result['n_groups']}")
+            print("\n   Fixed Effects:")
+            for param, stats in me_result['fixed_effects'].items():
+                sig = "***" if stats['significant'] else ""
+                print(f"      {param}: β = {stats['coefficient']:.4f}, p = {stats['p_value']:.4f} {sig}")
+            mixed_effects_results = me_result
+        else:
+            print(f"   Error: {me_result['error']}")
+    else:
+        print("   Skipping (no image_id column)")
+
+    # 11. Threshold Sensitivity Analysis
+    print("\n11. THRESHOLD SENSITIVITY ANALYSIS")
+    print("-"*40)
+    sensitivity_results = {}
+    if "clip_similarity" in df.columns:
+        threshold_analysis = sensitivity.threshold_ablation(
+            df.to_dict("records"),
+            thresholds=[0.90, 0.92, 0.94, 0.95, 0.96, 0.98]
+        )
+        print(f"   Disparity range: {threshold_analysis['disparity_range']['min']:.3f} - {threshold_analysis['disparity_range']['max']:.3f}")
+        print(f"   Disparity std: {threshold_analysis['disparity_range']['std']:.3f}")
+        print(f"   Avg ranking correlation: {threshold_analysis['avg_ranking_correlation']:.3f}")
+        print(f"   {threshold_analysis['interpretation']}")
+        sensitivity_results["threshold_ablation"] = threshold_analysis
+    else:
+        print("   Skipping (no clip_similarity column)")
+
+    # 12. Bootstrap Confidence Intervals
+    print("\n12. BOOTSTRAP ANALYSIS")
+    print("-"*40)
+    bootstrap_results = {}
+    if "image_id" in df.columns:
+        print("   Running bootstrap (1000 iterations)...")
+        bootstrap_result = sensitivity.bootstrap_disparity(
+            df,
+            n_bootstrap=1000,
+            sample_unit="image"
+        )
+        print(f"   Disparity: {bootstrap_result['disparity'].mean:.3f}")
+        print(f"   95% CI: [{bootstrap_result['disparity'].ci_lower:.3f}, {bootstrap_result['disparity'].ci_upper:.3f}]")
+        print(f"   SE: {bootstrap_result['disparity'].std_error:.3f}")
+        bootstrap_results = bootstrap_result
+    else:
+        print("   Skipping (no image_id column)")
+
+    # 13. SCS with Log-Odds Normalization
+    print("\n13. STEREOTYPE CONGRUENCE SCORE (LOG-ODDS)")
+    print("-"*40)
+    scs_log_odds_results = scs_calculator.calculate_scs_log_odds(df.to_dict("records"))
+    print(f"   Overall SCS (log-odds): {scs_log_odds_results['overall_scs_log_odds']:.3f}")
+    print(f"   Interpretation: {scs_log_odds_results['interpretation']}")
+
+    # 14. SCS with Risk Ratio Normalization
+    print("\n14. STEREOTYPE CONGRUENCE SCORE (RISK RATIO)")
+    print("-"*40)
+    scs_risk_ratio_results = scs_calculator.calculate_scs_risk_ratio(df.to_dict("records"))
+    print(f"   Overall SCS (risk ratio): {scs_risk_ratio_results['overall_scs_risk_ratio']:.3f}")
+    print(f"   Interpretation: {scs_risk_ratio_results['interpretation']}")
+
+    # 15. Edit Difficulty Diagnostics (optional)
+    edit_difficulty_results = {}
+    unchanged_summary = {}
+    if args.include_edit_difficulty:
+        print("\n15. EDIT DIFFICULTY DIAGNOSTICS")
+        print("-"*40)
+        unchanged_summary = summarize_unchanged(df)
+        if unchanged_summary:
+            print(f"   Unchanged rate (overall): {unchanged_summary['overall_rate']:.2%}")
+        edit_difficulty_results = analyze_edit_difficulty(df, analyzer)
+        if edit_difficulty_results:
+            print("   ✓ Edit difficulty controls computed")
+
+    # 16. Save comprehensive analysis report
     report = {
         "baseline_validation": baseline,
         "race_effect": {
@@ -462,7 +654,11 @@ Examples:
             }
             for p in pairwise
         ],
-        "scs": scs_results
+        "scs": scs_results,
+        "scs_log_odds": scs_log_odds_results,
+        "scs_risk_ratio": scs_risk_ratio_results,
+        "edit_difficulty_analysis": edit_difficulty_results,
+        "unchanged_summary": unchanged_summary
     }
 
     report_path = output_dir / "analysis_report.json"
@@ -472,76 +668,8 @@ Examples:
     print(f"\n✓ Analysis report saved to {report_path}")
     print(f"✓ Figures saved to {output_dir / 'figures'}")
 
-    # 11. Mixed-Effects Logistic Regression
-    print("\n11. MIXED-EFFECTS LOGISTIC REGRESSION")
-    print("-"*40)
-    mixed_effects_results = {}
-    if "image_id" in df.columns:
-        print("   Running with image_id as random effect...")
-        me_result = analyzer.mixed_effects_logistic(
-            df,
-            formula="is_refused ~ C(race) + C(category)",
-            random_effects=["image_id"]
-        )
-        if "error" not in me_result:
-            print(f"   Model converged: {me_result['converged']}")
-            print(f"   AIC: {me_result['model_fit']['aic']:.2f}")
-            print(f"   BIC: {me_result['model_fit']['bic']:.2f}")
-            print(f"   Number of groups: {me_result['n_groups']}")
-            print("\n   Fixed Effects:")
-            for param, stats in me_result['fixed_effects'].items():
-                sig = "***" if stats['significant'] else ""
-                print(f"      {param}: β = {stats['coefficient']:.4f}, p = {stats['p_value']:.4f} {sig}")
-            mixed_effects_results = me_result
-        else:
-            print(f"   Error: {me_result['error']}")
-    else:
-        print("   Skipping (no image_id column)")
-
-    # 12. Threshold Sensitivity Analysis
-    print("\n12. THRESHOLD SENSITIVITY ANALYSIS")
-    print("-"*40)
-    sensitivity_results = {}
-    if "clip_similarity" in df.columns:
-        threshold_analysis = sensitivity.threshold_ablation(
-            df.to_dict("records"),
-            thresholds=[0.90, 0.92, 0.94, 0.95, 0.96, 0.98]
-        )
-        print(f"   Disparity range: {threshold_analysis['disparity_range']['min']:.3f} - {threshold_analysis['disparity_range']['max']:.3f}")
-        print(f"   Disparity std: {threshold_analysis['disparity_range']['std']:.3f}")
-        print(f"   Avg ranking correlation: {threshold_analysis['avg_ranking_correlation']:.3f}")
-        print(f"   {threshold_analysis['interpretation']}")
-        sensitivity_results["threshold_ablation"] = threshold_analysis
-    else:
-        print("   Skipping (no clip_similarity column)")
-
-    # 13. Bootstrap Confidence Intervals
-    print("\n13. BOOTSTRAP ANALYSIS")
-    print("-"*40)
-    bootstrap_results = {}
-    if "image_id" in df.columns:
-        print("   Running bootstrap (1000 iterations)...")
-        bootstrap_result = sensitivity.bootstrap_disparity(
-            df,
-            n_bootstrap=1000,
-            sample_unit="image"
-        )
-        print(f"   Disparity: {bootstrap_result['disparity'].mean:.3f}")
-        print(f"   95% CI: [{bootstrap_result['disparity'].ci_lower:.3f}, {bootstrap_result['disparity'].ci_upper:.3f}]")
-        print(f"   SE: {bootstrap_result['disparity'].std_error:.3f}")
-        bootstrap_results = bootstrap_result
-    else:
-        print("   Skipping (no image_id column)")
-
-    # 14. SCS with Log-Odds Normalization
-    print("\n14. STEREOTYPE CONGRUENCE SCORE (LOG-ODDS)")
-    print("-"*40)
-    scs_log_odds_results = scs_calculator.calculate_scs_log_odds(df.to_dict("records"))
-    print(f"   Overall SCS (log-odds): {scs_log_odds_results['overall_scs_log_odds']:.3f}")
-    print(f"   Interpretation: {scs_log_odds_results['interpretation']}")
-
-    # 15. Generate LaTeX tables
-    print("\n15. GENERATING LATEX TABLES")
+    # 17. Generate LaTeX tables
+    print("\n17. GENERATING LATEX TABLES")
     print("-"*40)
     tables_dir = output_dir / "tables"
     tables_dir.mkdir(exist_ok=True)
@@ -558,8 +686,8 @@ Examples:
         f.write(disparity_table)
     print(f"   ✓ Disparity table: {disparity_latex_path}")
 
-    # 16. Save extended analysis results
-    print("\n16. SAVING EXTENDED ANALYSIS RESULTS")
+    # 18. Save extended analysis results
+    print("\n18. SAVING EXTENDED ANALYSIS RESULTS")
     print("-"*40)
 
     # Mixed-effects results
@@ -607,6 +735,24 @@ Examples:
     with open(scs_log_path, "w") as f:
         json.dump(scs_log_odds_results, f, indent=2, default=str)
     print(f"   ✓ SCS log-odds results: {scs_log_path}")
+
+    # SCS risk ratio
+    scs_rr_path = output_dir / "scs_risk_ratio.json"
+    with open(scs_rr_path, "w") as f:
+        json.dump(scs_risk_ratio_results, f, indent=2, default=str)
+    print(f"   ✓ SCS risk ratio results: {scs_rr_path}")
+
+    if edit_difficulty_results:
+        edit_path = output_dir / "edit_difficulty_analysis.json"
+        with open(edit_path, "w") as f:
+            json.dump(edit_difficulty_results, f, indent=2, default=str)
+        print(f"   ✓ Edit difficulty analysis: {edit_path}")
+
+    if unchanged_summary:
+        unchanged_path = output_dir / "unchanged_summary.json"
+        with open(unchanged_path, "w") as f:
+            json.dump(unchanged_summary, f, indent=2, default=str)
+        print(f"   ✓ Unchanged summary: {unchanged_path}")
 
     print("\n" + "="*60)
     print("ANALYSIS COMPLETE")

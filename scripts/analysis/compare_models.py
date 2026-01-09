@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.evaluation.metrics import DisparityMetrics
 from src.analysis.statistical import StatisticalAnalyzer
 from src.analysis.visualization import ResultsVisualizer
+from src.config import PathConfig
 
 
 def load_model_results(results_dir: Path, model_name: str) -> pd.DataFrame:
@@ -69,7 +70,7 @@ def load_model_results(results_dir: Path, model_name: str) -> pd.DataFrame:
 
 def main():
     parser = argparse.ArgumentParser(description="Compare models")
-    parser.add_argument("--results-dir", type=str, default="data/results",
+    parser.add_argument("--results-dir", type=str, default=None,
                        help="Base results directory")
     parser.add_argument("--models", type=str, nargs="+",
                        default=["flux", "step1x", "qwen"],
@@ -79,7 +80,7 @@ def main():
 
     args = parser.parse_args()
 
-    results_dir = Path(args.results_dir)
+    results_dir = Path(args.results_dir or str(PathConfig().results_dir))
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
