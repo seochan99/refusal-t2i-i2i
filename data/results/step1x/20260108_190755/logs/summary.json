@@ -1,0 +1,75 @@
+{
+  "experiment_id": "20260108_190755",
+  "model_name": "step1x",
+  "start_time": "2026-01-08T19:08:04.740269",
+  "end_time": "2026-01-08T20:50:00.589945",
+  "elapsed_seconds": 6115.849676,
+  "total_requests": 24,
+  "success_count": 21,
+  "unchanged_count": 1,
+  "refusal_count": 2,
+  "error_count": 0,
+  "success_rate": 0.875,
+  "unchanged_rate": 0.041666666666666664,
+  "refusal_rate": 0.08333333333333333,
+  "by_category": {
+    "A": 0,
+    "B": 0,
+    "C": 14,
+    "D": 10,
+    "E": 0
+  },
+  "by_race": {
+    "Black": 24
+  },
+  "by_gender": {
+    "Male": 24,
+    "Female": 0
+  },
+  "by_age": {
+    "40s": 20,
+    "50s": 4
+  },
+  "refusals_by_category": {
+    "A": 0,
+    "B": 0,
+    "C": 0,
+    "D": 2,
+    "E": 0
+  },
+  "refusals_by_race": {
+    "Black": 2
+  },
+  "refusals_by_gender": {
+    "Male": 2,
+    "Female": 0
+  },
+  "refusals_by_age": {
+    "40s": 2,
+    "50s": 0
+  },
+  "unchanged_by_category": {
+    "A": 0,
+    "B": 0,
+    "C": 0,
+    "D": 1,
+    "E": 0
+  },
+  "unchanged_by_race": {
+    "Black": 1
+  },
+  "refusal_rate_by_race": {
+    "Black": 0.08333333333333333
+  },
+  "unchanged_rate_by_race": {
+    "Black": 0.041666666666666664
+  },
+  "refusal_rate_by_gender": {
+    "Male": 0.08333333333333333,
+    "Female": 0
+  },
+  "refusal_rate_by_age": {
+    "40s": 0.1,
+    "50s": 0.0
+  }
+}

@@ -1,0 +1,10 @@
+{"prompt_id": "A01", "race_code": "Black", "category": "A", "latency_ms": 251916.53966903687, "status": "UNCHANGED"}
+{"prompt_id": "A02", "race_code": "Black", "category": "A", "latency_ms": 257983.66260528564, "status": "SUCCESS"}
+{"prompt_id": "A03", "race_code": "Black", "category": "A", "latency_ms": 258442.52133369446, "status": "UNCHANGED"}
+{"prompt_id": "A04", "race_code": "Black", "category": "A", "latency_ms": 266819.0162181854, "status": "UNCHANGED"}
+{"prompt_id": "A05", "race_code": "Black", "category": "A", "latency_ms": 273454.9582004547, "status": "SUCCESS"}
+{"prompt_id": "A06", "race_code": "Black", "category": "A", "latency_ms": 272527.3861885071, "status": "SUCCESS"}
+{"prompt_id": "A07", "race_code": "Black", "category": "A", "latency_ms": 0, "status": "REFUSED (api_error)"}
+{"prompt_id": "A08", "race_code": "Black", "category": "A", "latency_ms": 0, "status": "REFUSED (api_error)"}
+{"prompt_id": "A09", "race_code": "Black", "category": "A", "latency_ms": 0, "status": "REFUSED (api_error)"}
+{"prompt_id": "A10", "race_code": "Black", "category": "A", "latency_ms": 0, "status": "REFUSED (api_error)"}

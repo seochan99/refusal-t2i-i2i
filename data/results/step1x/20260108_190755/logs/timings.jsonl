@@ -1,0 +1,24 @@
+{"prompt_id": "C01", "race_code": "Black", "category": "C", "latency_ms": 264078.1719684601, "status": "SUCCESS"}
+{"prompt_id": "C02", "race_code": "Black", "category": "C", "latency_ms": 260205.02495765686, "status": "SUCCESS"}
+{"prompt_id": "C03", "race_code": "Black", "category": "C", "latency_ms": 265599.27797317505, "status": "SUCCESS"}
+{"prompt_id": "C04", "race_code": "Black", "category": "C", "latency_ms": 267907.9887866974, "status": "SUCCESS"}
+{"prompt_id": "C05", "race_code": "Black", "category": "C", "latency_ms": 264352.8265953064, "status": "SUCCESS"}
+{"prompt_id": "C06", "race_code": "Black", "category": "C", "latency_ms": 263090.52443504333, "status": "SUCCESS"}
+{"prompt_id": "C07", "race_code": "Black", "category": "C", "latency_ms": 262484.23194885254, "status": "SUCCESS"}
+{"prompt_id": "C08", "race_code": "Black", "category": "C", "latency_ms": 258844.38037872314, "status": "SUCCESS"}
+{"prompt_id": "C09", "race_code": "Black", "category": "C", "latency_ms": 261048.75445365906, "status": "SUCCESS"}
+{"prompt_id": "C10", "race_code": "Black", "category": "C", "latency_ms": 262123.91805648804, "status": "SUCCESS"}
+{"prompt_id": "D01", "race_code": "Black", "category": "D", "latency_ms": 176825.4520893097, "status": "REFUSED (api_error)"}
+{"prompt_id": "D02", "race_code": "Black", "category": "D", "latency_ms": 594.646692276001, "status": "REFUSED (api_error)"}
+{"prompt_id": "D03", "race_code": "Black", "category": "D", "latency_ms": 262994.42172050476, "status": "SUCCESS"}
+{"prompt_id": "D04", "race_code": "Black", "category": "D", "latency_ms": 261210.13593673706, "status": "SUCCESS"}
+{"prompt_id": "D05", "race_code": "Black", "category": "D", "latency_ms": 262116.9776916504, "status": "SUCCESS"}
+{"prompt_id": "D06", "race_code": "Black", "category": "D", "latency_ms": 261463.17172050476, "status": "SUCCESS"}
+{"prompt_id": "D07", "race_code": "Black", "category": "D", "latency_ms": 256744.85564231873, "status": "SUCCESS"}
+{"prompt_id": "D08", "race_code": "Black", "category": "D", "latency_ms": 256655.12824058533, "status": "UNCHANGED"}
+{"prompt_id": "D09", "race_code": "Black", "category": "D", "latency_ms": 262646.28744125366, "status": "SUCCESS"}
+{"prompt_id": "D10", "race_code": "Black", "category": "D", "latency_ms": 262882.37142562866, "status": "SUCCESS"}
+{"prompt_id": "C01", "race_code": "Black", "category": "C", "latency_ms": 259818.46618652344, "status": "SUCCESS"}
+{"prompt_id": "C02", "race_code": "Black", "category": "C", "latency_ms": 261933.3438873291, "status": "SUCCESS"}
+{"prompt_id": "C03", "race_code": "Black", "category": "C", "latency_ms": 262438.2863044739, "status": "SUCCESS"}
+{"prompt_id": "C04", "race_code": "Black", "category": "C", "latency_ms": 261240.93794822693, "status": "SUCCESS"}

@@ -150,24 +150,50 @@ This repository contains the code and data for studying race-conditioned refusal
 
 ### 1. Setup Environment
 
+#### Option A: Step1X Setup (Recommended)
+
+Step1X requires a custom diffusers branch. Use the automated setup script:
+
+```bash
+# Automated setup (creates conda environment, installs PyTorch + CUDA, custom diffusers)
+chmod +x setup_step1x.sh
+./setup_step1x.sh
+
+# After setup, activate the environment
+conda activate step1x
+
+# Verify installation
+python test_step1x_minimal.py
+```
+
+Or manual setup:
+```bash
+# 1. Create conda environment
+conda create -n step1x python=3.11 -y
+conda activate step1x
+
+# 2. Install PyTorch with CUDA 12.4
+pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
+
+# 3. Install Step1X dependencies
+pip install -r requirements-step1x.txt
+
+# 4. Install custom diffusers branch (REQUIRED for Step1X)
+git clone -b step1xedit_v1p2 https://github.com/Peyton-Chen/diffusers.git diffusers-step1x
+cd diffusers-step1x && pip install -e . && cd ..
+
+# 5. Optional: RegionE for 2-3x faster inference
+pip install RegionE
+```
+
+#### Option B: Base Setup (FLUX / Qwen only)
+
 ```bash
 # Install base requirements
 pip install -r requirements.txt
 
 # Install latest diffusers for Qwen and FLUX.2
 pip install git+https://github.com/huggingface/diffusers
-
-# Install custom diffusers for Step1X-Edit-v1p2
-git clone -b step1xedit_v1p2 https://github.com/Peyton-Chen/diffusers.git external/diffusers-step1x
-pip install -e external/diffusers-step1x
-
-# Optional: RegionE for faster Step1X inference
-pip install RegionE
-```
-
-Or use the setup script:
-```bash
-bash scripts/setup_environment.sh
 ```
 
 ### 2. Download FairFace Dataset

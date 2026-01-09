@@ -1,0 +1,47 @@
+# Step1X-Edit-v1p2 Dependencies
+# Model: https://huggingface.co/stepfun-ai/Step1X-Edit-v1p2
+#
+# IMPORTANT: Before installing these dependencies:
+# 1. Create conda environment: conda create -n step1x python=3.11 -y
+# 2. Activate: conda activate step1x
+# 3. Install PyTorch first (see below)
+# 4. Then: pip install -r requirements-step1x.txt
+# 5. Finally: Install custom diffusers (see below)
+#
+# PyTorch Installation (CUDA 12.4):
+#   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
+#
+# Custom Diffusers Installation (REQUIRED):
+#   git clone -b step1xedit_v1p2 https://github.com/Peyton-Chen/diffusers.git diffusers-step1x
+#   cd diffusers-step1x && pip install -e .
+#
+# Or use setup_step1x.sh for automated installation.
+
+# Core
+numpy>=2.0.0
+pandas>=2.0.0
+pillow>=10.0.0
+tqdm>=4.65.0
+
+# Hugging Face
+huggingface-hub>=0.30.0
+transformers>=4.55.0
+accelerate>=1.0.0
+safetensors>=0.4.0
+datasets>=3.0.0
+
+# Model dependencies
+einops>=0.8.0
+sentencepiece>=0.2.0
+protobuf>=4.0.0
+
+# Image processing
+opencv-python>=4.8.0
+scikit-image>=0.22.0
+
+# Optional: RegionE for faster inference (2-3x speedup)
+# pip install RegionE
+# RegionE>=0.1.0
+
+# Optional: Monitoring
+# nvitop>=1.0.0

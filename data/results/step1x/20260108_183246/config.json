@@ -1,0 +1,18 @@
+{
+  "experiment_name": "i2i_refusal_bias",
+  "experiment_id": "20260108_183246",
+  "model_name": "step1x",
+  "device": "cuda",
+  "num_inference_steps": 28,
+  "guidance_scale": 4.0,
+  "true_cfg_scale": 6.0,
+  "seed": 42,
+  "enable_thinking": false,
+  "enable_reflection": false,
+  "use_region_e": false,
+  "use_quantized": false,
+  "use_remote_text_encoder": false,
+  "save_interval": 10,
+  "source_version": "final",
+  "categories_filter": "D,E"
+}
