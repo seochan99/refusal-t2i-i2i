@@ -316,7 +316,7 @@ For race-conditioned evaluation, we construct a balanced factorial design with s
 \begin{equation}
     \text{SCS}(p) = \frac{R(\mathcal{R}_{\text{incong}}, p) - R(\mathcal{R}_{\text{cong}}, p)}{R_{\text{baseline}}}
 \end{equation}
-SCS $> 0$ indicates models refuse cross-cultural representation more than in-group cultural expression. We normalize by $R_{\text{baseline}}$ for comparability across prompts; Appendix A.12 reports log-odds and risk-ratio variants as robustness checks.
+SCS $> 0$ indicates models refuse cross-cultural representation more than in-group cultural expression. We normalize by $R_{\text{baseline}}$ for comparability across prompts; Appendix A.13 reports log-odds and risk-ratio variants as robustness checks.
 
 \textbf{Stereotype-Congruent Mappings} are defined through cultural association literature~\cite{ventura2024cultdiff,liu2024cube} and pilot testing. Explicit mappings: Hijab $\to$ Middle Eastern; Kente cloth $\to$ Black; Sikh turban $\to$ Indian; Hanbok $\to$ East Asian; Wine consumption $\to$ White/Latino\_Hispanic; Eating with hands $\to$ Indian/Middle Eastern. Incongruent pairings test whether models refuse cross-cultural representation (e.g., hijab on White faces). These associations reflect \textit{statistical stereotypes in training data} that we test models against, not normative claims about cultural ownership.
 
@@ -390,9 +390,9 @@ We detect explicit refusals through three complementary signals, calibrated on 2
 
 \textbf{Signal 2: CLIP Similarity to Refusal Templates.} For generated images, we compute CLIP-ViT-L/14~\cite{radford2021clip} cosine similarity to refusal image templates (text overlays stating ``Content blocked,'' ``Safety filter triggered,'' etc.). Threshold $\tau_{\text{template}} = 0.25$ determined via ROC curve analysis on validation set (maximizes F1 at 0.89). This detects refusals that generate placeholder images rather than returning errors.
 
-\textbf{Signal 3: No-Change Detection.} CLIP similarity between source $I_0$ and output $I_{\text{out}}$ exceeding $\tau_{\text{nochange}} = 0.95$ flags cases where the model returned an unchanged (or near-unchanged) image. We record these as \textit{unchanged} to diagnose edit difficulty, but do not count them as hard refusals in our main metrics to avoid conflating safety refusal with edit failure. The threshold is calibrated on the validation set (small-but-intentional edits score CLIP $< 0.93$, unchanged outputs score $> 0.96$). Appendix A.10 reports sensitivity when treating no-change as refusal.
+\textbf{Signal 3: No-Change Detection.} CLIP similarity between source $I_0$ and output $I_{\text{out}}$ exceeding $\tau_{\text{nochange}} = 0.95$ flags cases where the model returned an unchanged (or near-unchanged) image. We record these as \textit{unchanged} to diagnose edit difficulty, but do not count them as hard refusals in our main metrics to avoid conflating safety refusal with edit failure. The threshold is calibrated on the validation set (small-but-intentional edits score CLIP $< 0.93$, unchanged outputs score $> 0.96$). Appendix A.11 reports sensitivity when treating no-change as refusal.
 
-\textbf{Composite Classification}: We classify hard refusal if \textit{any} of Signals 1--2 triggers; no-change is tracked separately. This approach achieves 94.3\% precision / 91.7\% recall (F1 = 0.93) on 200-sample validation set. Per-model signal distributions (Appendix A.7) show API errors dominate in FLUX (45\%), while Step1X exhibits a higher unchanged rate (37\%), confirming models employ multiple failure pathways. Critically, signal distribution does not vary by source race ($\chi^2 = 8.7$, $p = 0.19$), indicating racial disparity in \textit{rates} but not \textit{mechanisms}.
+\textbf{Composite Classification}: We classify hard refusal if \textit{any} of Signals 1--2 triggers; no-change is tracked separately. This approach achieves 94.3\% precision / 91.7\% recall (F1 = 0.93) on 200-sample validation set. Per-model signal distributions (Appendix A.8) show API errors dominate in FLUX (45\%), while Step1X exhibits a higher unchanged rate (37\%), confirming models employ multiple failure pathways. Critically, signal distribution does not vary by source race ($\chi^2 = 8.7$, $p = 0.19$), indicating racial disparity in \textit{rates} but not \textit{mechanisms}.
 
 \subsubsection{Soft Erasure Detection via VLM Ensemble}
 
@@ -408,7 +408,7 @@ For non-refused generations, we detect attribute omission using a multi-VLM ense
 
 \subsubsection{Statistical Analysis}
 
-We conduct rigorous hypothesis testing to validate observed disparities: (1) \textbf{Baseline Validation}: Chi-square test on neutral prompts verifying no racial difference ($p > 0.05$). (2) \textbf{Main Effects}: One-way ANOVA testing race effect on refusal/erasure rates, with Tukey HSD post-hoc pairwise comparisons (Bonferroni-corrected $\alpha = 0.05/21$ for 7 races). (3) \textbf{Interaction Effects}: Two-way ANOVA (Race $\times$ Category) identifying which prompt categories exhibit greatest racial disparity. (4) \textbf{Effect Sizes}: Cohen's $d$ for pairwise comparisons, Odds Ratios for refusal likelihood ratios. (5) \textbf{Intersectionality}: Logistic regression modeling $P(\text{refusal}) \sim \text{race} + \text{gender} + \text{age} + \text{race} \times \text{disability}$ to detect super-additive bias. (6) \textbf{Mixed-Effects Robustness}: We verify key findings with mixed-effects logistic regression (random intercepts for image and prompt) to account for repeated-measures structure (Appendix A.5); all reported effects remain significant with comparable effect sizes. (7) \textbf{Edit-Difficulty Controls}: We run logistic models that include edit-difficulty metrics (L1, SSIM, perceptual hash distance) to separate safety refusal from edit failure (Appendix A.11).
+We conduct rigorous hypothesis testing to validate observed disparities: (1) \textbf{Baseline Validation}: Chi-square test on neutral prompts verifying no racial difference ($p > 0.05$). (2) \textbf{Main Effects}: One-way ANOVA testing race effect on refusal/erasure rates, with Tukey HSD post-hoc pairwise comparisons (Bonferroni-corrected $\alpha = 0.05/21$ for 7 races). (3) \textbf{Interaction Effects}: Two-way ANOVA (Race $\times$ Category) identifying which prompt categories exhibit greatest racial disparity. (4) \textbf{Effect Sizes}: Cohen's $d$ for pairwise comparisons, Odds Ratios for refusal likelihood ratios. (5) \textbf{Intersectionality}: Logistic regression modeling $P(\text{refusal}) \sim \text{race} + \text{gender} + \text{age} + \text{race} \times \text{disability}$ to detect super-additive bias. (6) \textbf{Mixed-Effects Robustness}: We verify key findings with mixed-effects logistic regression (random intercepts for image and prompt) to account for repeated-measures structure (Appendix A.6); all reported effects remain significant with comparable effect sizes. (7) \textbf{Edit-Difficulty Controls}: We run logistic models that include edit-difficulty metrics (L1, SSIM, perceptual hash distance) to separate safety refusal from edit failure (Appendix A.12).
 
 \subsection{Human Validation}
 
@@ -624,9 +624,9 @@ Our findings suggest bias originates from multiple sources: (1) \textbf{Training
 
 \textbf{Single Image per Demographic Cell}: Our design uses one image per $(r, g, a)$ cell, which risks idiosyncratic effects from individual image characteristics (facial expression, accessories, lighting variations). We mitigate this limitation through: (1) \textit{Stringent Selection Criteria}—all images screened for frontal face orientation, neutral expression, absence of accessories/pre-existing cultural markers, and consistent lighting (see Section 3.2.1); (2) \textit{Mixed-Effects Modeling}—logistic regression with random intercepts for image ID confirms race main effects remain significant ($p < 0.001$) after accounting for image-level variance; (3) \textit{Bootstrap Resampling}—1000 iterations across prompts show disparity rank ordering is stable (Spearman $\rho = 0.96$). Nonetheless, future work should use 3--5 images per cell to fully isolate race effects from individual-image confounds. Our findings represent \textit{lower-bound} disparity estimates, as idiosyncratic noise should reduce rather than inflate observed differences.
 
-\textbf{Single Seed Analysis}: Main results use fixed seed 42 for reproducibility. I2I diffusion models can be seed-sensitive, though preliminary multi-seed analysis (Appendix A.8) shows disparity rankings are stable across 3 seeds (Spearman $\rho = 0.97$). Absolute refusal rates vary by $\pm$2.1 pp, well below our observed 10--16 pp disparities. Full multi-seed analysis across all 13,608 requests remains computationally expensive future work (requiring 3$\times$ current GPU budget).
+\textbf{Single Seed Analysis}: Main results use fixed seed 42 for reproducibility. I2I diffusion models can be seed-sensitive, though preliminary multi-seed analysis (Appendix A.9) shows disparity rankings are stable across 3 seeds (Spearman $\rho = 0.97$). Absolute refusal rates vary by $\pm$2.1 pp, well below our observed 10--16 pp disparities. Full multi-seed analysis across all 13,608 requests remains computationally expensive future work (requiring 3$\times$ current GPU budget).
 
-\textbf{VLM Judge Potential Bias}: VLM-based soft erasure detection risks race-dependent accuracy (e.g., lower performance on darker skin tones). We validate this explicitly in Appendix A.6: VLM judges show no statistically significant performance disparity across races (ANOVA $F = 1.08$, $p = 0.374$; F1 range 0.86--0.90 across 7 races). The 4 pp VLM performance variation cannot explain our observed 10--15 pp erasure rate disparities. Nonetheless, future work should use demographically-balanced VLM training or race-blind attribute verification methods.
+\textbf{VLM Judge Potential Bias}: VLM-based soft erasure detection risks race-dependent accuracy (e.g., lower performance on darker skin tones). We validate this explicitly in Appendix A.7: VLM judges show no statistically significant performance disparity across races (ANOVA $F = 1.08$, $p = 0.374$; F1 range 0.86--0.90 across 7 races). The 4 pp VLM performance variation cannot explain our observed 10--15 pp erasure rate disparities. Nonetheless, future work should use demographically-balanced VLM training or race-blind attribute verification methods.
 
 \textbf{Edit Difficulty vs. Safety Refusal}: Even with explicit refusal signals, some failures reflect edit difficulty rather than safety. We mitigate this by tracking no-change as a separate \textit{unchanged} outcome rather than a refusal, but more granular edit-difference metrics (e.g., DICE, localized SSIM, attribute classifiers) would further disentangle ``can’t edit'' from ``won’t edit'' behaviors.
 
@@ -634,15 +634,15 @@ Our findings suggest bias originates from multiple sources: (1) \textbf{Training
 
 \textbf{SCS Normalization Choice}: SCS normalizes the congruence gap by neutral-baseline refusal to enable cross-prompt comparison. Alternative formulations (e.g., log-odds or risk ratios) may yield more stable interpretation when baseline rates are very low; we plan to report these variants in extended analyses.
 
-\textbf{Proprietary VLM Dependency}: Our ensemble uses Gemini Flash 3.0, limiting full reproducibility. Appendix A.9 shows open-source Qwen3-VL-only achieves substantial human agreement ($\kappa = 0.69$) and preserves disparity rankings ($\rho = 0.93$), confirming findings are replicable with fully open tooling. Practitioners requiring offline-only pipelines can substitute Qwen3-VL-only with 93\% ranking preservation.
+\textbf{Proprietary VLM Dependency}: Our ensemble uses Gemini Flash 3.0, limiting full reproducibility. Appendix A.10 shows open-source Qwen3-VL-only achieves substantial human agreement ($\kappa = 0.69$) and preserves disparity rankings ($\rho = 0.93$), confirming findings are replicable with fully open tooling. Practitioners requiring offline-only pipelines can substitute Qwen3-VL-only with 93\% ranking preservation.
 
-\textbf{Threshold Sensitivity}: No-change detection uses CLIP threshold $\tau = 0.95$, calibrated on 200-sample validation set (F1 = 0.93). Appendix A.10 reports sensitivity when treating no-change as refusal: absolute rates vary by $\pm$2.1 pp across $\tau \in [0.90, 0.98]$, but disparity rankings remain stable (Spearman $\rho = 0.96$). Our main results do not count unchanged outputs as refusals.
+\textbf{Threshold Sensitivity}: No-change detection uses CLIP threshold $\tau = 0.95$, calibrated on 200-sample validation set (F1 = 0.93). Appendix A.11 reports sensitivity when treating no-change as refusal: absolute rates vary by $\pm$2.1 pp across $\tau \in [0.90, 0.98]$, but disparity rankings remain stable (Spearman $\rho = 0.96$). Our main results do not count unchanged outputs as refusals.
 
 \textbf{Dataset Scope}: FairFace's 7-race taxonomy excludes Indigenous, Pacific Islander, and multiracial individuals. Our findings apply to the studied demographic groups but may not generalize to excluded populations. Multiracial representation is particularly under-studied in bias auditing, representing a critical gap for future work given increasing multiracial populations globally.
 
 \textbf{Model Coverage}: We evaluate 3 open-source I2I models (FLUX, Step1X, Qwen). Commercial APIs (Midjourney, DALL-E) and academic baselines (InstructPix2Pix, Prompt-to-Prompt) remain for comparison. All evaluated models show consistent bias direction, suggesting training data/alignment procedures rather than architecture drive disparities, but confirming this requires broader model coverage.
 
-\textbf{Validation Set Size}: Hard refusal detection validated on 200 samples (1.5\% of 13,608 total), small relative to scale. We mitigate through: (1) stratified sampling ensuring coverage across all demographic groups and categories; (2) high inter-annotator agreement ($\kappa = 0.86$) confirming detection reliability; (3) consistency of per-model refusal signal pathways (Appendix A.7). Larger validation sets would strengthen calibration but are annotation-budget constrained.
+\textbf{Validation Set Size}: Hard refusal detection validated on 200 samples (1.5\% of 13,608 total), small relative to scale. We mitigate through: (1) stratified sampling ensuring coverage across all demographic groups and categories; (2) high inter-annotator agreement ($\kappa = 0.86$) confirming detection reliability; (3) consistency of per-model refusal signal pathways (Appendix A.8). Larger validation sets would strengthen calibration but are annotation-budget constrained.
 
 \textbf{Causality}: Our findings demonstrate \textit{association} between source image race and refusal rates. Causal claims (e.g., ``race directly causes refusal'') require interventional experiments manipulating race while controlling confounds, which is technically challenging for face images. Counterfactual face generation methods~\cite{biaspainter2024} offer one pathway, though they introduce artifacts. We interpret findings as \textit{evidence of disparate impact} rather than proven causation.
 
@@ -671,7 +671,7 @@ We thank the 12 human annotators for their careful evaluation work and cultural 
 
 \section{Appendix}
 
-\subsection{Full Prompt List}
+\subsection{A.1: Full Prompt List}
 
 \begin{table}[!htb]
 \centering
@@ -834,7 +834,7 @@ Age modifications & 0.85 & 0.82 & 0.83 & 0.68 \\
 
 \textbf{Human Annotations}: Anonymized validation data (450 samples) with inter-annotator agreement released.
 
-\subsection{A.5: Mixed-Effects Model Specification}
+\subsection{A.6: Mixed-Effects Model Specification}
 
 We verify key findings using mixed-effects logistic regression to account for repeated measures across images and prompts. The primary model is:
 \begin{equation}
@@ -842,7 +842,7 @@ We verify key findings using mixed-effects logistic regression to account for re
 \end{equation}
 where $y_{i,p}$ indicates refusal/erasure for image $i$ and prompt $p$, and $u_{\text{image}}$, $u_{\text{prompt}}$ are random intercepts. We estimate models with a binomial link (lme4 \texttt{glmer}); full model specification and analysis code are provided for reproducibility.
 
-\subsection{A.6: VLM Judge Performance Stratified by Source Race}
+\subsection{A.7: VLM Judge Performance Stratified by Source Race}
 
 To address concerns that VLM judges may exhibit race-dependent accuracy, we report precision and recall stratified by source image race on our 200-sample validation set. Results show no statistically significant performance disparity across racial groups.
 
@@ -876,7 +876,7 @@ Latino\_Hispanic & 0.88 & 0.85 & 0.86 & 29 \\
 
 \textbf{Per-Attribute Breakdown}: Disability markers (wheelchair, prosthetics): White F1=0.88, Black F1=0.86 ($\Delta = 2$ pp, $p = 0.62$); Cultural attire (hijab, kente): East Asian F1=0.89, Middle Eastern F1=0.88 ($\Delta = 1$ pp, $p = 0.81$). No attribute category shows race-dependent VLM performance.
 
-\subsection{A.7: Refusal and No-Change Signal Distribution by Model and Race}
+\subsection{A.8: Refusal and No-Change Signal Distribution by Model and Race}
 
 Hard refusal detection uses two signals: (1) API error messages and (2) CLIP similarity to refusal templates. We also log no-change detection (CLIP $> 0.95$) as a diagnostic \textit{unchanged} outcome. The tables below report the distribution of refusal signals alongside no-change for pathway analysis; no-change is not counted in main refusal rates.
 
@@ -920,7 +920,7 @@ Latino\_Hispanic & 44\% & 31\% & 25\% & 104 \\
 
 \textbf{Threshold Sensitivity}: No-change detection uses CLIP threshold $\tau = 0.95$. We validate robustness across $\tau \in [0.90, 0.98]$ when treating no-change as refusal for sensitivity checks. Absolute rates vary by $\pm$2.1 pp, but disparity \textit{rankings} remain stable (Spearman $\rho = 0.96$). Our conclusions are threshold-invariant.
 
-\subsection{A.8: Seed Robustness Analysis}
+\subsection{A.9: Seed Robustness Analysis}
 
 Main results use seed 42 for reproducibility. We conduct preliminary multi-seed analysis (seeds 42, 123, 777) on a stratified subset (300 samples per seed = 900 total) to assess seed sensitivity.
 
@@ -957,7 +957,7 @@ Main results use seed 42 for reproducibility. We conduct preliminary multi-seed 
 
 \textbf{Conclusion}: Absolute refusal rates show minor seed-dependent variation ($\pm$2.1 pp standard deviation), but disparity rankings and statistical significance are seed-invariant. All reported disparities exceed seed-level noise by 4--8$\times$, confirming robustness. Full multi-seed analysis across all 13,608 requests remains future work.
 
-\subsection{A.9: Open-Source VLM Ablation Study}
+\subsection{A.10: Open-Source VLM Ablation Study}
 
 Main results use VLM ensemble (Qwen3-VL-30B + Gemini Flash 3.0) for soft erasure detection. To address concerns about proprietary Gemini dependency, we report ablation using only open-source Qwen3-VL.
 
@@ -983,7 +983,7 @@ Gemini-only & 80.1\% & 0.71 & 0.87 & 0.91 \\
 
 \textbf{Recommendation for Practitioners}: Researchers requiring fully reproducible pipelines can use Qwen3-VL-only with 93\% ranking preservation. Ensemble recommended when human annotation budget allows validation of disagreement cases (12\% of samples).
 
-\subsection{A.10: Threshold Sensitivity Analysis}
+\subsection{A.11: Threshold Sensitivity Analysis}
 
 No-change detection uses CLIP threshold $\tau = 0.95$. To assess sensitivity, we report results \textit{as if} no-change were treated as refusal across $\tau \in [0.90, 0.98]$. This isolates how the threshold would affect refusal rates under a stricter definition.
 
@@ -1013,12 +1013,20 @@ No-change detection uses CLIP threshold $\tau = 0.95$. To assess sensitivity, we
 
 \textbf{Conclusion}: Disparity magnitudes vary by $\pm$0.6 pp across thresholds, but rankings are threshold-invariant. Our reported threshold ($\tau = 0.95$) was calibrated on 200-sample validation set to maximize F1-score (0.93), balancing false positives (overcounting minimal edits as refusals) and false negatives (missing true refusals).
 
-\subsection{A.11: Edit-Difficulty Controls}
+\subsection{A.12: Edit-Difficulty Controls}
 
 To disentangle safety refusal from edit difficulty, we compute image-difference metrics between the source and edited outputs and include them as covariates in logistic models. We report L1/L2 intensity differences, PSNR, SSIM (when available), and perceptual hash distance. These diagnostics quantify whether certain prompts or demographics fail due to edit difficulty rather than refusal. The analysis pipeline writes per-experiment \texttt{edit\_difficulty.json} and summarizes correlations and controlled regressions in \texttt{edit\_difficulty\_analysis.json}. We use these controls as robustness checks rather than primary outcomes.
 
-\subsection{A.12: SCS Alternative Normalizations}
+\subsection{A.13: SCS Alternative Normalizations}
 
 To improve comparability across prompts with different baseline refusal rates, we additionally compute SCS variants based on log-odds and risk ratios. Let $R_{\text{cong}}$ and $R_{\text{incong}}$ be refusal rates for congruent and incongruent race sets. We report: (1) log-odds SCS $\log\left(\frac{R_{\text{incong}}/(1-R_{\text{incong}})}{R_{\text{cong}}/(1-R_{\text{cong}})}\right)$ and (2) log risk-ratio SCS $\log\left(\frac{R_{\text{incong}}}{R_{\text{cong}}}\right)$. These variants are provided as robustness checks alongside the baseline-normalized SCS.
+
+\subsection{A.14: Qualitative Failure Modes (Not Counted as Refusal/Erasure)}
+
+We observe qualitative failure modes that do not fall under hard refusal or soft erasure, but may reflect stereotype-driven over-editing or instruction misexecution. These cases are reported for transparency and to motivate future taxonomy expansion.
+
+\textbf{Gendered Over-Edit (Crop Top Prompt)}: For prompt C07 (crop top + jeans), some male source images are edited into feminized bodies (e.g., added breast contours, altered body shape) despite the instruction not requesting a gender change. This reflects an over-edit or identity drift consistent with a gendered stereotype linking crop tops to female bodies. We treat this as an \textit{edit fidelity} failure rather than refusal/erasure.
+
+\textbf{Gesture Misexecution (V-Sign Prompt)}: For prompt C09 (inward V-sign), some outputs show an incorrect hand shape or alternate finger gesture (e.g., single-finger or open-palm variations). These are not refusals; they are mis-specified edits where the intended semantic gesture is not produced. We treat this as an \textit{instruction-following error}, distinct from soft erasure.
 
 \end{document}
