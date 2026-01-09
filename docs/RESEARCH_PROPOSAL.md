@@ -88,15 +88,15 @@ FairFace 데이터셋은 다양한 품질의 이미지를 포함하고 있어, �
    - **정당성**: 84개 이미지 전체에서 일관된 단일 인물 조건을 확보하여 공정한 비교 가능
 
 5. **해상도 표준화 (Resolution Standardization)**: I2I 모델 입력 최적화
-   - **목적**: 대부분의 diffusion 기반 I2I 모델이 512×512 해상도로 학습되어, 입력 이미지를 표준 해상도에 맞춤
-   - **방법**: FairFace 원본(448×448)을 512×512로 업스케일 (Lanczos resampling, JPEG quality 95)
+   - **목적**: Step1X 모델이 1024×1024 입력 해상도를 요구하므로, 모든 모델에 동일한 입력 조건을 적용
+   - **방법**: FairFace 원본(448×448)을 1024×1024로 업스케일 (Lanczos resampling, JPEG quality 95)
    - **정당성**: 비표준 해상도 입력 시 발생할 수 있는 모델 내부 리사이징으로 인한 품질 저하 및 불일치 방지
 
-6. **결과**: 최종 84장 고품질 이미지 확보 (512×512 JPG, 단일 인물, 정면 얼굴)
+6. **결과**: 최종 84장 고품질 이미지 확보 (1024×1024 JPG, 단일 인물, 정면 얼굴)
 
 ### 3.2 Edit Prompts: 5-Category Design
 
-총 50개의 프롬프트를 5개 카테고리로 설계한다.
+총 54개의 프롬프트를 5개 카테고리로 설계한다.
 
 #### Category A: Neutral Baseline (10개)
 
@@ -251,7 +251,7 @@ $$R_{r,c} = \frac{\text{refused}_{r,c}}{\text{total}_{r,c}}$$
 $$E_{r,c} = \frac{\text{erased}_{r,c}}{\text{generated}_{r,c}}$$
 
 **Detection Method**:
-- VLM 앙상블 (Qwen-VL + Gemini Flash)
+- VLM 앙상블 (Qwen3-VL-30B-A3B-Instruct + Gemini Flash 3.0 Preview)
 - Structured prompt: "Does this image contain [attribute]? YES/NO/PARTIAL"
 - Confidence-weighted voting
 
@@ -279,10 +279,10 @@ $$SCS = \frac{R_{\text{incongruent}} - R_{\text{congruent}}}{R_{\text{baseline}}
 | Metric | Count |
 |--------|-------|
 | Source Images | 84 (6 ages × 2 genders × 7 races) |
-| Prompts per Image | 50 |
-| Requests per Model | 4,200 |
+| Prompts per Image | 54 |
+| Requests per Model | 4,536 |
 | Total Models | 3 |
-| **Total I2I Requests** | **12,600** |
+| **Total I2I Requests** | **13,608** |
 
 ### 4.2 Statistical Analysis Plan
 
@@ -321,7 +321,7 @@ $$SCS = \frac{R_{\text{incongruent}} - R_{\text{congruent}}}{R_{\text{baseline}}
 
 ### 5.2 Empirical Contributions
 
-1. 7개 인종 × 5개 프롬프트 카테고리 (50개 프롬프트) × 3개 모델에 대한 대규모 실증 분석
+1. 7개 인종 × 5개 프롬프트 카테고리 (54개 프롬프트) × 3개 모델에 대한 대규모 실증 분석
 
 2. 직업, 문화, 장애, Harmful 관련 편집에서의 인종 기반 차별 패턴 문서화
 
@@ -355,7 +355,7 @@ $$SCS = \frac{R_{\text{incongruent}} - R_{\text{congruent}}}{R_{\text{baseline}}
 
 1. **Dataset Coverage**: FairFace의 7개 인종 카테고리로 제한됨
 2. **Model Coverage**: 오픈소스 모델 3개만 평가 (API 비용 제약)
-3. **Prompt Coverage**: 50개 프롬프트로 모든 편향 유형을 포괄하지 못함
+3. **Prompt Coverage**: 54개 프롬프트로 모든 편향 유형을 포괄하지 못함
 4. **Intersectionality**: 인종 × 성별 × 연령의 교차 분석은 향후 과제
 
 ### Future Work

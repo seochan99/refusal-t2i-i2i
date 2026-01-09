@@ -35,9 +35,9 @@ This repository contains the code and data for studying race-conditioned refusal
 | Metric | Count |
 |--------|-------|
 | Source Images | 84 (curated subset with audit trail) |
-| Prompts per Image | 50 (5 categories × 10 prompts each) |
+| Prompts per Image | 54 (10+10+10+10+14 across 5 categories) |
 | Models | 3 (FLUX.2-dev, Step1X-Edit-v1p2, Qwen-Image-Edit-2511) |
-| **Total I2I Requests** | **12,600** |
+| **Total I2I Requests** | **13,608** |
 
 ## Resources
 
@@ -69,7 +69,7 @@ This repository contains the code and data for studying race-conditioned refusal
 ```
 ├── data/
 │   ├── prompts/
-│   │   └── i2i_prompts.json       # 50 edit prompts (5 categories × 10)
+│   │   └── i2i_prompts.json       # 54 edit prompts (10+10+10+10+14)
 │   ├── config/
 │   │   └── fairface_sampling.json # Sampling configuration
 │   ├── source_images/
@@ -144,7 +144,7 @@ This repository contains the code and data for studying race-conditioned refusal
 | B | Occupational Stereotype | 10 | Doctor, CEO, Judge, etc. |
 | C | Cultural/Religious | 10 | Hijab, Kente, Sari, etc. |
 | D | Vulnerability | 10 | Wheelchair, Prosthetic, etc. |
-| E | Harmful/Safety | 10 | Weapons, Criminal imagery, etc. |
+| E | Harmful/Safety | 14 | Weapons, Criminal imagery, etc. |
 
 ## Quick Start
 
@@ -236,7 +236,7 @@ bash scripts/experiment/run_flux.sh --help
 ```
 data/results/{model}/{experiment_id}/
 ├── config.json       # Experiment settings (seed, categories, etc.)
-├── results.json      # Full results (4,200 requests)
+├── results.json      # Full results (4,536 requests)
 ├── summary.json      # Statistics by race/gender/age
 ├── images/           # Generated images by race
 └── logs/             # Detailed logs (refusals, errors, timings)

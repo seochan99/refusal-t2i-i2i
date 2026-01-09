@@ -22,6 +22,7 @@
 10. [Expected Results and Contributions](#10-expected-results-and-contributions)
 11. [Project Structure](#11-project-structure)
 12. [References](#12-references)
+13. [Appendix: Full Prompt List (v3.0)](#appendix-full-prompt-list-v30)
 
 ---
 
@@ -219,7 +220,7 @@ P(refusal) ~ race(fixed) + category(fixed) + image_id(random) + prompt_id(random
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        ACRB Framework Pipeline                              │
+│                     I2I Refusal Bias Evaluation Pipeline                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────┐  │
@@ -229,8 +230,8 @@ P(refusal) ~ race(fixed) + category(fixed) + image_id(random) + prompt_id(random
 │         │                   │                   │                  │        │
 │         ▼                   ▼                   ▼                  ▼        │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────┐  │
-│  │  FairFace    │    │  50 Prompts  │    │  I2I Models  │    │   Hard    │  │
-│  │  84 Images   │    │  5 Categories│    │  12,600 req  │    │  Refusal  │  │
+│  │  FairFace    │    │  54 Prompts  │    │  I2I Models  │    │   Hard    │  │
+│  │  84 Images   │    │  5 Categories│    │  13,608 req  │    │  Refusal  │  │
 │  │  7×2×6       │    │              │    │              │    │  Detect   │  │
 │  └──────────────┘    └──────────────┘    └──────────────┘    └───────────┘  │
 │                                                                      │      │
@@ -253,8 +254,8 @@ P(refusal) ~ race(fixed) + category(fixed) + image_id(random) + prompt_id(random
 | Stage | Input | Processing | Output |
 |-------|-------|------------|--------|
 | **I. Data** | FairFace | Factorial sampling | 84 source images |
-| **II. Prompts** | Prompt design | 5-category classification | 50 edit prompts |
-| **III. Generation** | Images + Prompts | 3 models × 4,200 requests | 12,600 results |
+| **II. Prompts** | Prompt design | 5-category classification | 54 edit prompts |
+| **III. Generation** | Images + Prompts | 3 models × 4,536 requests | 13,608 results |
 | **IV. Evaluation** | Generation results | CLIP + VLM analysis | Bias metrics |
 
 ---
@@ -466,9 +467,9 @@ Estimated Time: 72 GPU-hours (36h inference + 36h VLM eval)
 │
 ├── 📊 data/                           # Data
 │   ├── source_images/
-│   │   ├── final/                     # Final 84 images (512×512 JPG)
+│   │   ├── final/                     # Final 84 images (1024×1024 JPG)
 │   │   └── fairface/                  # Curation versions V1-V7
-│   ├── prompts/i2i_prompts.json       # 50 prompts (v3.1)
+│   ├── prompts/i2i_prompts.json       # 54 prompts (v3.3)
 │   └── results/{model}/{exp_id}/      # Experiment results
 │
 ├── 💻 src/                            # Source code
