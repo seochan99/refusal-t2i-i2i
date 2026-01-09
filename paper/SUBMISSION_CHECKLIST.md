@@ -26,7 +26,7 @@
 ### Abstract (150-200 words)
 - [x] Word count: ~180 words (WITHIN RANGE)
 - [x] States problem clearly
-- [x] Mentions methodology (50 prompts × 84 images × 3 models)
+- [x] Mentions methodology (54 prompts × 84 images × 3 models)
 - [x] Quantifies key findings (2.3×, 3.7×, 41% disparities)
 - [x] Includes statistical validation (κ = 0.74)
 - [x] Mentions policy relevance (EU AI Act, EO 14110)
@@ -57,7 +57,7 @@
 - [x] Human validation protocol (12 annotators, 6 backgrounds)
 
 ### Experimental Setup (0.5 pages)
-- [x] Scale: 12,600 total requests
+- [x] Scale: 13,608 total requests
 - [x] Inference configuration (A100, 50 steps, seed 42)
 - [x] Computational requirements (72 GPU-hours)
 - [x] Reproducibility checklist (Docker, GitHub, licenses)
@@ -124,7 +124,7 @@
 ## Statistical Rigor ✅
 
 ### Metrics Reported
-- [x] Sample sizes (84 images, 50 prompts, 12,600 requests, 450 validations)
+- [x] Sample sizes (84 images, 54 prompts, 13,608 requests, 450 validations)
 - [x] P-values with statistical tests (ANOVA F-statistic, χ² values)
 - [x] Effect sizes (η², Cohen's d)
 - [x] Confidence intervals where appropriate

@@ -267,6 +267,18 @@ npm run dev
 python scripts/analysis/analyze_results.py --results-dir data/results
 ```
 
+#### Edit Difficulty Diagnostics (Optional)
+```bash
+# Compute edit difficulty metrics (writes edit_difficulty.json per experiment)
+python scripts/analysis/compute_edit_difficulty.py \
+    --results-dir data/results/flux/20260109_120000
+
+# Attach difficulty metrics in analysis
+python scripts/analysis/analyze_results.py \
+    --results-dir data/results \
+    --include-edit-difficulty
+```
+
 #### Full Pipeline with Human Corrections
 ```bash
 # Include human review corrections from Firebase/survey app
@@ -293,9 +305,15 @@ python scripts/analysis/analyze_results.py --export-csv --include-human-review
 ```
 results/final_analysis/
 ├── analysis_summary.json       # Complete analysis metadata
+├── analysis_report.json        # Main analysis report
 ├── final_corrected_dataset.csv # Human-corrected dataset (if requested)
-├── statistical_results.json    # ANOVA, Chi-square, mixed effects
+├── mixed_effects_results.json  # Mixed-effects regression outputs
+├── sensitivity_analysis.json   # Threshold/ablation sensitivity
 ├── bootstrap_results.json      # Robustness analysis
+├── scs_log_odds.json            # SCS log-odds normalization
+├── scs_risk_ratio.json          # SCS risk-ratio normalization
+├── edit_difficulty_analysis.json # Edit difficulty controls (if requested)
+├── unchanged_summary.json       # Unchanged rate diagnostics (if requested)
 ├── figures/                    # Publication-ready visualizations
 │   ├── bias_heatmap.png       # Race/gender bias patterns
 │   ├── disparity_barplot.png   # Statistical significance
