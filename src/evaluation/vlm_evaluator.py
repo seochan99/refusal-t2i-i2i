@@ -1,19 +1,32 @@
 """
 VLM Evaluator for Attribute Detection with Human-in-the-Loop Review
-Uses Qwen3-VL-8B-Instruct and Gemini Flash ensemble for soft erasure detection.
+Uses Qwen3-VL-30B-A3B-Instruct and Gemini Flash 3.0 Preview ensemble for soft erasure detection.
 
 Workflow:
-1. Ensemble evaluation (Qwen + Gemini voting)
+1. Ensemble evaluation (Qwen3-VL-30B + Gemini Flash 3.0 voting)
 2. Consensus detection - automatic acceptance for agreed cases
 3. Human review queue - manual review for disagreed cases only
 4. Survey app integration - human review via web interface
 5. Final results integration with human corrections
 
-Model: https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct
-- 9B parameters, BF16 precision
-- Enhanced visual perception and multimodal reasoning
-- Flash attention enabled for optimal performance
-- Compatible with HuggingFace transformers example code
+Supported Models:
+1. Qwen3-VL-30B-A3B-Instruct (default)
+   - 30B parameters with A3B (Adaptive 3-Bit) MoE architecture
+   - Uses Qwen3VLMoeForConditionalGeneration class
+   - Requires ~40GB+ VRAM (A100 recommended)
+   - Production model for IJCAI 2026 paper
+
+2. Qwen3-VL-8B-Instruct (optional)
+   - 8B parameters, Dense architecture
+   - Uses Qwen3VLForConditionalGeneration class
+   - Optimized for RTX 4090 (24GB VRAM)
+
+Usage:
+    # Default (30B model)
+    evaluator = VLMEvaluator()
+
+    # Use 8B model for local testing
+    evaluator = VLMEvaluator(qwen_model_size="8B")
 
 Features:
 - Ensemble voting for improved accuracy
@@ -26,13 +39,28 @@ Requirements:
 - transformers >= 4.57.0 (for Qwen3-VL support)
 - pip install git+https://github.com/huggingface/transformers
 - flash-attn (optional, for flash_attention_2)
-- google-genai (for Gemini Flash API)
+- google-genai (for Gemini Flash 3.0 Preview API)
 """
 
 from typing import Optional
 from PIL import Image
 import base64
 import io
+
+
+# Model configurations
+QWEN_MODELS = {
+    "30B": {
+        "name": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+        "class": "Qwen3VLMoeForConditionalGeneration",  # MoE architecture
+        "description": "30B MoE model (default for paper experiments)"
+    },
+    "8B": {
+        "name": "Qwen/Qwen3-VL-8B-Instruct",
+        "class": "Qwen3VLForConditionalGeneration",  # Dense architecture
+        "description": "8B dense model for local testing"
+    }
+}
 
 
 class VLMEvaluator:
@@ -46,9 +74,22 @@ Answer with exactly one word: YES, NO, or PARTIAL
 
 Answer:"""
 
-    def __init__(self, use_ensemble: bool = True):
+    def __init__(self, use_ensemble: bool = True, qwen_model_size: str = "30B"):
+        """
+        Initialize VLM Evaluator.
+
+        Args:
+            use_ensemble: Use both Qwen and Gemini for voting (default: True)
+            qwen_model_size: Qwen model size - "30B" (default) or "8B"
+                - "30B": Qwen3-VL-30B-A3B-Instruct (MoE, for paper experiments)
+                - "8B": Qwen3-VL-8B-Instruct (Dense, for local testing)
+        """
         self.use_ensemble = use_ensemble
+        self.qwen_model_size = qwen_model_size.upper()
+        if self.qwen_model_size not in QWEN_MODELS:
+            raise ValueError(f"Invalid qwen_model_size: {qwen_model_size}. Choose '30B' or '8B'")
         self.qwen_model = None
+        self.qwen_processor = None
         self.gemini_model = None
 
     def _image_to_base64(self, image: Image.Image) -> str:
@@ -58,34 +99,55 @@ Answer:"""
         return base64.b64encode(buffer.getvalue()).decode()
 
     def _load_qwen(self):
-        """Load Qwen3-VL-8B-Instruct model.
+        """Load Qwen3-VL model based on qwen_model_size parameter.
 
-        Model: https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct
-        - 9B parameters, BF16
-        - Enhanced visual perception and reasoning
+        30B Model: Qwen/Qwen3-VL-30B-A3B-Instruct (MoE architecture)
+        - 30B parameters with A3B (Adaptive 3-Bit) quantization
+        - Uses Qwen3VLMoeForConditionalGeneration class
+        - Requires ~40GB+ VRAM (A100 recommended)
+
+        8B Model: Qwen/Qwen3-VL-8B-Instruct (Dense architecture)
+        - 8B parameters, BF16
+        - Uses Qwen3VLForConditionalGeneration class
         - Optimized for RTX 4090 (24GB VRAM)
         """
         if self.qwen_model is None:
+            model_config = QWEN_MODELS[self.qwen_model_size]
+            model_name = model_config["name"]
+            model_class_name = model_config["class"]
+
             try:
-                print("Loading Qwen3-VL-8B-Instruct...")
+                print(f"Loading {model_name} ({self.qwen_model_size})...")
+                print(f"Model class: {model_class_name}")
 
-                from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
+                from transformers import AutoProcessor
+                import torch
 
-                # Follow HuggingFace example with flash attention for better performance
-                self.qwen_model = Qwen3VLForConditionalGeneration.from_pretrained(
-                    "Qwen/Qwen3-VL-8B-Instruct",
-                    dtype="auto",
+                # Dynamically import the correct model class
+                if model_class_name == "Qwen3VLMoeForConditionalGeneration":
+                    from transformers import Qwen3VLMoeForConditionalGeneration as ModelClass
+                else:
+                    from transformers import Qwen3VLForConditionalGeneration as ModelClass
+
+                # Load model with flash attention for better performance
+                self.qwen_model = ModelClass.from_pretrained(
+                    model_name,
+                    torch_dtype=torch.bfloat16,
                     attn_implementation="flash_attention_2",
                     device_map="auto"
                 )
-                self.qwen_processor = AutoProcessor.from_pretrained("Qwen/Qwen3-VL-8B-Instruct")
-                print("✅ Qwen3-VL-8B-Instruct loaded successfully")
+                self.qwen_processor = AutoProcessor.from_pretrained(model_name)
+                print(f"Qwen3-VL loaded successfully: {model_name}")
+
+            except ImportError as e:
+                print(f"Failed to import {model_class_name}: {e}")
+                print("Make sure transformers is updated: pip install git+https://github.com/huggingface/transformers")
             except Exception as e:
-                print(f"❌ Failed to load Qwen3-VL-8B-Instruct: {e}")
-                print("💡 Make sure transformers is updated: pip install git+https://github.com/huggingface/transformers")
+                print(f"Failed to load {model_name}: {e}")
+                print("Make sure transformers is updated: pip install git+https://github.com/huggingface/transformers")
 
     def _query_qwen(self, image: Image.Image, prompt: str) -> str:
-        """Query Qwen3-VL-8B-Instruct model following HuggingFace example."""
+        """Query Qwen3-VL model. Model selected based on qwen_model_size parameter."""
         self._load_qwen()
 
         if self.qwen_model is None:
@@ -136,7 +198,7 @@ Answer:"""
             return "UNKNOWN"
 
     def _query_gemini(self, image: Image.Image, prompt: str) -> str:
-        """Query Gemini 3 Flash model."""
+        """Query Gemini Flash 3.0 Preview model."""
         try:
             from google import genai
             from google.genai import types

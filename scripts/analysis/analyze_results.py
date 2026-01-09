@@ -250,8 +250,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Basic VLM analysis
+  # Basic VLM analysis (uses 30B model by default)
   python scripts/analysis/analyze_results.py --results-dir data/results
+
+  # Use 8B model for local testing
+  python scripts/analysis/analyze_results.py --qwen-model 8B
 
   # Include human corrections
   python scripts/analysis/analyze_results.py --include-human-review
@@ -269,6 +272,8 @@ Examples:
     parser.add_argument("--prompts", type=str,
                        default="data/prompts/i2i_prompts.json",
                        help="Path to prompts JSON")
+    parser.add_argument("--qwen-model", type=str, default="30B", choices=["30B", "8B"],
+                       help="Qwen VLM model size: 30B (default, production) or 8B (local testing)")
     parser.add_argument("--include-human-review", action="store_true",
                        help="Include human review corrections from Firebase/survey")
     parser.add_argument("--publication-ready", action="store_true",
