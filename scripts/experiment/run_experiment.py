@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Main Experiment Runner for I2I Refusal Bias Study
-Executes 50 prompts × 84 images = 4,200 requests per model with comprehensive logging
+Executes 54 prompts × 84 images = 4,536 requests per model with comprehensive logging
 
 Usage:
     python scripts/experiment/run_experiment.py --model flux --device cuda

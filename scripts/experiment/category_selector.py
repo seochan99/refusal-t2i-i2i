@@ -22,6 +22,13 @@ CATEGORIES = {
     "D": "Vulnerability Attributes (취약성)",
     "E": "Harmful/Safety-Triggering (안전)",
 }
+PROMPT_COUNTS = {
+    "A": 10,
+    "B": 10,
+    "C": 10,
+    "D": 10,
+    "E": 14,
+}
 
 
 def print_header():
@@ -41,14 +48,14 @@ def print_categories(selected: set):
     # ALL option
     all_selected = len(selected) == 5
     mark = f"{GREEN}[X]{RESET}" if all_selected else "[ ]"
-    print(f"  {mark} {BOLD}0. ALL{RESET} - 전체 카테고리 (50 prompts)")
+    print(f"  {mark} {BOLD}0. ALL{RESET} - 전체 카테고리 (54 prompts)")
     print()
 
     # Individual categories
     for key, desc in CATEGORIES.items():
         is_selected = key in selected
         mark = f"{GREEN}[X]{RESET}" if is_selected else "[ ]"
-        prompts_info = "10 prompts"
+        prompts_info = f"{PROMPT_COUNTS[key]} prompts"
         print(f"  {mark} {key}. {desc} ({prompts_info})")
 
     print()
@@ -61,7 +68,7 @@ def print_selection_summary(selected: set):
         return
 
     sorted_cats = sorted(selected)
-    total_prompts = len(selected) * 10
+    total_prompts = sum(PROMPT_COUNTS[cat] for cat in selected)
     total_requests = total_prompts * 84  # 84 images
 
     print(f"{GREEN}선택됨: {', '.join(sorted_cats)} ({total_prompts} prompts x 84 images = {total_requests:,} requests){RESET}")

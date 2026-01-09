@@ -1,6 +1,6 @@
 """
 Prompt Loader for I2I Refusal Bias Study
-Loads and manages 50 prompts across 5 categories
+Loads and manages 54 prompts across 5 categories (10+10+10+10+14)
 """
 
 import json
