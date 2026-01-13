@@ -319,7 +319,8 @@ This difference is the core novelty of this study.
 
 ### Figure 1: Overall Architecture (4-Stage Pipeline)
 
-![Overall Architecture - 4-Stage Pipeline](../paper/figures/fig3.png)
+<img width="10464" height="6339" alt="fig2" src="https://github.com/user-attachments/assets/56f807e4-7cc4-4370-b61a-8bb112b77e6a" />
+
 
 > **Figure 1**: Complete experiment pipeline. 84 images selected from FairFace dataset → 54 prompts sent to 3 models for I2I editing → VLM/Human evaluation → Bias metric calculation.
 
@@ -1192,7 +1193,8 @@ python scripts/experiment/run_experiment.py --model flux --experiment-id 2026011
 
 ### Figure 2: Example Outputs Across Models (Black Female 20s)
 
-![Example Outputs - Black Female 20s × 5 Categories × 3 Models](../paper/figures/fig2.png)
+<img width="3104" height="1780" alt="fig3" src="https://github.com/user-attachments/assets/49c83e31-6c19-4b5c-8509-663a31c8ba8e" />
+
 
 > **Description**: 15 result images from applying Category A, B, C, D, E prompts to Black Female 20s source image across 3 models (Step1X, Qwen, FLUX). Subject to edit application and demographic drift evaluation.
 
