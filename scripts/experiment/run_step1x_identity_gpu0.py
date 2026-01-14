@@ -5,8 +5,13 @@ Handles: ALL MALE images (7 races × 5 ages = 35 images)
 """
 
 import json
+import os
 import sys
 from pathlib import Path
+
+# Set HuggingFace cache to scratch (must be before importing models)
+os.environ["HF_HOME"] = "/scratch/chans/models/huggingface"
+os.environ["HF_HUB_CACHE"] = "/scratch/chans/models/huggingface/hub"
 from datetime import datetime
 from PIL import Image
 
