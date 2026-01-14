@@ -81,6 +81,8 @@ def main():
         print(f"Prompt {prompt_id} ({domain}): {prompt_text}")
         print("=" * 60)
 
+        # ===== PASS 1: All races EDITED (baseline) =====
+        print(f"\n--- {prompt_id} EDITED (all races) ---")
         for race in RACES:
             image_key = f"{race}_{GENDER}_{AGE}"
             source_path = SOURCE_DIR / race / f"{image_key}.jpg"
@@ -89,12 +91,10 @@ def main():
                 print(f"  SKIP: Source not found: {source_path}")
                 continue
 
-            source_image = Image.open(source_path)
-            identity_prompt = identity_prompts.get(image_key, "")
-
-            # ===== 1. EDITED (Baseline - no identity prompt) =====
             count += 1
-            print(f"\n[{count}/{total}] {image_key} - EDITED")
+            print(f"[{count}/{total}] {image_key} - EDITED")
+
+            source_image = Image.open(source_path)
 
             try:
                 result = model.edit(
@@ -138,14 +138,24 @@ def main():
                     "error": str(e)[:200]
                 })
 
-            # ===== 2. PRESERVED (with identity prompt) =====
-            count += 1
-            print(f"[{count}/{total}] {image_key} - PRESERVED")
+        # ===== PASS 2: All races PRESERVED (with identity prompt) =====
+        print(f"\n--- {prompt_id} PRESERVED (all races) ---")
+        for race in RACES:
+            image_key = f"{race}_{GENDER}_{AGE}"
+            source_path = SOURCE_DIR / race / f"{image_key}.jpg"
 
+            if not source_path.exists():
+                continue
+
+            identity_prompt = identity_prompts.get(image_key, "")
             if not identity_prompt:
                 print(f"  SKIP: No identity prompt for {image_key}")
                 continue
 
+            count += 1
+            print(f"[{count}/{total}] {image_key} - PRESERVED")
+
+            source_image = Image.open(source_path)
             combined_prompt = f"{prompt_text}. {identity_prompt}"
 
             try:
