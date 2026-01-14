@@ -4,10 +4,12 @@ Category C Pilot - GPU 1 (FEMALE)
 New ambiguous "traditional" prompts for stereotype detection
 Generates: Edited (baseline) + Preserved (with identity prompt)
 """
-
+import os
 import json
 import sys
 from pathlib import Path
+os.environ["HF_HOME"] = "/scratch/chans/models/huggingface"
+os.environ["HF_HUB_CACHE"] = "/scratch/chans/models/huggingface/hub"
 from datetime import datetime
 from PIL import Image
 
