@@ -510,7 +510,54 @@ python scripts/visualization/plot_category_c_comparison.py
 
 ---
 
-## 12. Key Contributions (Paper-Ready)
+## 12. Paper Narrative & Structure (IJCAI-ready)
+
+### 12.1 Storyline (Abstract Alignment)
+- 출발점: I2I 편집에서 demographic-based refusal이 존재할 것이라는 가정 (abstract 유지)
+- 관찰: 오픈소스 I2I 모델은 hard refusal이 거의 없음
+- 핵심 전환: "편집이 성공해 보이지만 identity가 drift"하는 **Soft Erasure + Stereotype Replacement**가 주요 문제
+- 본문 전개: (측정) → (카테고리별 패턴) → (모델 간 일관성) → (완화) → (검증)
+
+### 12.2 Section Outline (Proposed)
+1. **Introduction**: 문제 정의 + refusal 가정 → 관찰 전환 + 기여 요약
+2. **Related Work**: T2I bias, I2I editing, stereotype/identity preservation
+3. **Benchmark Setup**: 84 base images, B/C/D 30 prompts, 3 models (Step1X/Qwen/FLUX)
+4. **Evaluation Framework**: VLM 기반 4축 평가 + Category C 설계
+5. **Results (RQ1/RQ2/RQ3)**: 편향 존재, 카테고리별 패턴, 모델 간 일관성
+6. **Mitigation (RQ4)**: Identity Preservation prompt 효과
+7. **Human Evaluation (RQ5)**: VLM-Human 상관 검증
+8. **Discussion & Limitations**: capability confound, VLM bias, open-source 범위
+9. **Conclusion**: identity preservation fairness의 필요성 요약
+
+### 12.3 Claim-to-Evidence Map
+
+| Claim | Evidence | Suggested Figure/Table |
+|-------|----------|------------------------|
+| H1 Bias Existence | Race/Gender score 분포 (비백인 vs 백인) | Fig: race-wise score barplot |
+| H2 Stereotype Pattern | B/C/D 카테고리별 비교 | Fig: category heatmap |
+| H3 Cross-Model Consistency | Directional agreement, Spearman ρ | Table: model agreement |
+| H4 Mitigation | Edited vs Preserved Δ score | Fig: before/after comparison |
+| H5 VLM Validity | VLM-Human correlation | Fig: scatter + r |
+
+### 12.4 Figure/Table Plan (Main Paper)
+- Fig 1: End-to-End pipeline (Section 9)
+- Fig 2: D03 aging matrix (pilot evidence + motivation)
+- Fig 3: Category C stereotype analysis (assumed_culture + stereotype score)
+- Fig 4: Mitigation effect (Edited vs Preserved)
+- Fig 5: VLM vs Human correlation
+- Table 1: Prompt categories (B/C/D) and evaluation axes
+- Table 2: Model list + experimental scale
+
+### 12.5 Guardrails (Claim Discipline)
+- refusal bias는 주장하지 않음 (open-source I2I에서 거의 0% 관찰)
+- Soft Erasure는 capability confound와 분리: unchanged rate를 함께 보고
+- Category C는 ambiguous prompt에 대한 "assumption" 측정임을 명시
+- T2I->I2I bypass는 Appendix로만 언급
+- 범위: open-source 모델에 한정 (상용 API는 일반화하지 않음)
+
+---
+
+## 13. Key Contributions (Paper-Ready)
 
 1. **Bias Discovery**: I2I 모델에서 Hard Refusal 대신 **Soft Erasure + Stereotype Replacement** 패턴 체계적 발견
 
@@ -523,7 +570,7 @@ python scripts/visualization/plot_category_c_comparison.py
 
 ---
 
-## 13. File References
+## 14. File References
 
 ```
 data/
@@ -556,4 +603,4 @@ scripts/
 
 ---
 
-**Last Updated**: January 14, 2026, 4:00 PM KST
+**Last Updated**: January 14, 2026, 6:30 PM KST
