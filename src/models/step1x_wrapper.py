@@ -117,8 +117,25 @@ class Step1XWrapper(I2IModel):
             if isinstance(source_image, Image.Image):
                 images = source_image.convert("RGB")
             else:
-                # Multi-image input
-                images = [img.convert("RGB") for img in source_image]
+                # Multi-image input: concatenate side-by-side
+                # Step1X doesn't support list of images, so we merge them
+                converted_images = [img.convert("RGB") for img in source_image]
+                
+                # Get dimensions
+                widths = [img.width for img in converted_images]
+                heights = [img.height for img in converted_images]
+                
+                # Create a new image by concatenating horizontally
+                total_width = sum(widths)
+                max_height = max(heights)
+                
+                concatenated = Image.new('RGB', (total_width, max_height))
+                x_offset = 0
+                for img in converted_images:
+                    concatenated.paste(img, (x_offset, 0))
+                    x_offset += img.width
+                
+                images = concatenated
 
             # Setup generator
             if seed is not None:
