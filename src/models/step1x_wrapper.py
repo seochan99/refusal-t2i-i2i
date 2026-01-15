@@ -141,7 +141,7 @@ class Step1XWrapper(I2IModel):
 
             # Add prefix for multi-image inputs to help model understand
             if is_multi_image:
-                prompt_prefix = "The input image contains two separate people side by side (left and right). Keep both people visible in the output. "
+                prompt_prefix = "The input contains two reference people (shown side by side). Create a single unified scene with both people naturally integrated together. "
                 full_prompt = prompt_prefix + prompt
             else:
                 full_prompt = prompt
