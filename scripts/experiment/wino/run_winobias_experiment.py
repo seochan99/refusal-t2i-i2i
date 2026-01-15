@@ -16,6 +16,7 @@ from pathlib import Path
 from datetime import datetime
 import time
 from PIL import Image
+import logging
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -24,6 +25,36 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.models.flux_wrapper import FluxWrapper
 from src.models.qwen_wrapper import QwenImageEditWrapper
 from src.models.step1x_wrapper import Step1XWrapper
+
+
+def setup_logging(output_dir: Path, model_name: str) -> logging.Logger:
+    """Setup logging to both console and file."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = output_dir / f"experiment_{model_name}_{timestamp}.log"
+    
+    # Create logger
+    logger = logging.getLogger('winobias_experiment')
+    logger.setLevel(logging.INFO)
+    
+    # Remove existing handlers
+    logger.handlers = []
+    
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_formatter = logging.Formatter('%(message)s')
+    console_handler.setFormatter(console_formatter)
+    
+    # File handler
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+    
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    
+    return logger
 
 
 def image_filename_to_path(filename: str, base_dir: Path) -> Path:
@@ -45,53 +76,89 @@ def load_prompts(prompts_file: Path) -> list:
 def run_experiment(args):
     """Run WinoBias experiment with specified model."""
     
+    # Setup output directory first
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Setup logging
+    logger = setup_logging(output_dir, args.model)
+    
+    # Log experiment start
+    logger.info("="*70)
+    logger.info("WinoBias Gender Stereotype Experiment")
+    logger.info("="*70)
+    logger.info(f"Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"Model: {args.model}")
+    logger.info(f"Device: {args.device}")
+    logger.info(f"Prompts File: {args.prompts_file}")
+    logger.info(f"Base Directory: {args.base_dir}")
+    logger.info(f"Output Directory: {output_dir}")
+    logger.info(f"Prompt Range: {args.start_id} to {args.end_id}")
+    logger.info(f"Inference Steps: {args.steps}")
+    logger.info(f"Random Seed: {args.seed}")
+    
     # Load prompts (new format: list of dicts with id, prompt, input_image_1, input_image_2)
-    prompts = load_prompts(args.prompts_file)
+    logger.info("\nLoading prompts...")
+    try:
+        prompts = load_prompts(args.prompts_file)
+        logger.info(f"✓ Loaded {len(prompts)} prompts from {args.prompts_file.name}")
+    except Exception as e:
+        logger.error(f"✗ Failed to load prompts: {e}")
+        return
     
     # Filter prompts by ID range
     prompts = [p for p in prompts if args.start_id <= p['id'] <= args.end_id]
+    logger.info(f"✓ Filtered to {len(prompts)} prompts (ID {args.start_id}-{args.end_id})")
+    logger.info("="*70 + "\n")
     
-    # Initialize model
-    print(f"\n{'='*70}")
-    print(f"WinoBias Gender Stereotype Experiment")
-    print(f"{'='*70}")
-    print(f"Model: {args.model}")
-    print(f"Prompts: {args.start_id} to {args.end_id} ({len(prompts)} total)")
-    print(f"Output directory: {args.output_dir}")
-    print(f"{'='*70}\n")
-    
+    # Model-specific configuration
     if args.model == "flux2":
+        logger.info("Model Configuration:")
+        logger.info(f"  - Quantized: {args.quantized}")
+        logger.info(f"  - Remote Text Encoder: {args.remote_encoder}")
         model = FluxWrapper(
             device=args.device,
             use_quantized=args.quantized,
             use_remote_text_encoder=args.remote_encoder
         )
     elif args.model == "qwen":
+        logger.info("Model Configuration: Qwen-Image-Edit-2511")
         model = QwenImageEditWrapper(device=args.device)
     elif args.model == "step1x":
+        logger.info("Model Configuration:")
+        logger.info(f"  - Thinking Mode: {args.thinking}")
+        logger.info(f"  - Reflection Mode: {args.reflection}")
         model = Step1XWrapper(
             device=args.device,
             enable_thinking=args.thinking,
             enable_reflection=args.reflection
         )
     else:
+        logger.error(f"Unknown model: {args.model}")
         raise ValueError(f"Unknown model: {args.model}")
     
     # Load model
-    print("Loading model...")
-    model.load()
-    print("✓ Model loaded\n")
-    
-    # Setup output directory
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("\nLoading model...")
+    model_load_start = time.time()
+    try:
+        model.load()
+        model_load_time = time.time() - model_load_start
+        logger.info(f"✓ Model loaded successfully ({model_load_time:.2f}s)\n")
+    except Exception as e:
+        logger.error(f"✗ Failed to load model: {e}")
+        raise
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     # Run experiments
+    logger.info("="*70)
+    logger.info("Starting Experiment Loop")
+    logger.info("="*70)
+    
     results = []
     success_count = 0
     error_count = 0
+    total_inference_time = 0
     
     for idx, prompt_entry in enumerate(prompts, 1):
         prompt_id = prompt_entry['id']
@@ -99,28 +166,33 @@ def run_experiment(args):
         image_1_filename = prompt_entry['input_image_1']
         image_2_filename = prompt_entry['input_image_2']
         
-        print(f"\n[{idx}/{len(prompts)}] Prompt {prompt_id}")
-        print(f"  Text: {prompt_text}")
-        print(f"  Image 1: {image_1_filename}")
-        print(f"  Image 2: {image_2_filename}")
+        logger.info(f"\n{'─'*70}")
+        logger.info(f"[{idx}/{len(prompts)}] Prompt ID: {prompt_id}")
+        logger.info(f"{'─'*70}")
+        logger.info(f"Prompt: {prompt_text}")
+        logger.info(f"Input Image 1: {image_1_filename}")
+        logger.info(f"Input Image 2: {image_2_filename}")
         
         try:
             # Load source images
+            logger.debug(f"Resolving image paths...")
             img_a_path = image_filename_to_path(image_1_filename, args.base_dir)
             img_b_path = image_filename_to_path(image_2_filename, args.base_dir)
+            logger.debug(f"  Image 1 path: {img_a_path}")
+            logger.debug(f"  Image 2 path: {img_b_path}")
             
             if not img_a_path.exists():
-                raise FileNotFoundError(f"Image A not found: {img_a_path}")
+                raise FileNotFoundError(f"Image 1 not found: {img_a_path}")
             if not img_b_path.exists():
-                raise FileNotFoundError(f"Image B not found: {img_b_path}")
+                raise FileNotFoundError(f"Image 2 not found: {img_b_path}")
             
+            logger.info("Loading images...")
             img_a = Image.open(img_a_path)
             img_b = Image.open(img_b_path)
-            
-            print(f"  ✓ Loaded images: {img_a_path.name}, {img_b_path.name}")
+            logger.info(f"✓ Images loaded: {img_a.size}, {img_b.size}")
             
             # Run inference
-            print(f"  Generating with {args.model}...", end=" ", flush=True)
+            logger.info(f"Generating image with {args.model}...")
             start_time = time.time()
             
             result = model.edit(
@@ -131,15 +203,21 @@ def run_experiment(args):
             )
             
             elapsed = time.time() - start_time
+            total_inference_time += elapsed
             
             if result.success:
                 # Save output image
                 output_filename = f"prompt_{prompt_id:03d}_{timestamp}.png"
                 output_path = output_dir / output_filename
+                
+                logger.info("Saving output image...")
                 result.output_image.save(output_path)
                 
-                print(f"✓ ({elapsed:.1f}s)")
-                print(f"  Saved: {output_filename}")
+                logger.info(f"✓ SUCCESS")
+                logger.info(f"  Inference Time: {elapsed:.2f}s")
+                logger.info(f"  Model Latency: {result.latency_ms:.0f}ms")
+                logger.info(f"  Output File: {output_filename}")
+                logger.info(f"  Full Path: {output_path}")
                 
                 results.append({
                     "prompt_id": prompt_id,
@@ -148,13 +226,17 @@ def run_experiment(args):
                     "input_image_2": image_2_filename,
                     "success": True,
                     "output_file": output_filename,
+                    "output_path": str(output_path),
                     "latency_ms": result.latency_ms,
-                    "elapsed_sec": elapsed
+                    "elapsed_sec": elapsed,
+                    "timestamp": datetime.now().isoformat()
                 })
                 success_count += 1
             else:
-                print(f"✗ FAILED")
-                print(f"  Error: {result.error_message}")
+                logger.warning(f"✗ GENERATION FAILED")
+                logger.warning(f"  Refusal Type: {result.refusal_type.value}")
+                logger.warning(f"  Error: {result.error_message}")
+                logger.warning(f"  Latency: {result.latency_ms:.0f}ms")
                 
                 results.append({
                     "prompt_id": prompt_id,
@@ -164,52 +246,84 @@ def run_experiment(args):
                     "success": False,
                     "error": result.error_message,
                     "refusal_type": result.refusal_type.value,
-                    "latency_ms": result.latency_ms
+                    "latency_ms": result.latency_ms,
+                    "timestamp": datetime.now().isoformat()
                 })
                 error_count += 1
         
         except Exception as e:
-            print(f"✗ EXCEPTION: {e}")
+            logger.error(f"✗ EXCEPTION OCCURRED")
+            logger.error(f"  Exception Type: {type(e).__name__}")
+            logger.error(f"  Exception Message: {str(e)}")
+            import traceback
+            logger.error(f"  Traceback:\n{traceback.format_exc()}")
+            
             results.append({
                 "prompt_id": prompt_id,
                 "prompt": prompt_text,
                 "input_image_1": image_1_filename,
                 "input_image_2": image_2_filename,
                 "success": False,
-                "error": str(e)
+                "error": str(e),
+                "exception_type": type(e).__name__,
+                "timestamp": datetime.now().isoformat()
             })
             error_count += 1
     
+    # Calculate statistics
+    avg_inference_time = total_inference_time / len(prompts) if prompts else 0
+    success_rate = (success_count / len(prompts) * 100) if prompts else 0
+    
     # Save results
     results_file = output_dir / f"results_{args.model}_{timestamp}.json"
-    with open(results_file, 'w') as f:
-        json.dump({
+    logger.info(f"\nSaving results to {results_file}...")
+    
+    results_data = {
+        "experiment": {
             "model": args.model,
-            "timestamp": timestamp,
+            "start_time": timestamp,
+            "end_time": datetime.now().strftime("%Y%m%d_%H%M%S"),
             "total_prompts": len(prompts),
             "success_count": success_count,
             "error_count": error_count,
-            "config": {
-                "device": args.device,
-                "steps": args.steps,
-                "seed": args.seed,
-                "quantized": args.quantized if args.model == "flux2" else None,
-                "thinking": args.thinking if args.model == "step1x" else None,
-                "reflection": args.reflection if args.model == "step1x" else None,
-            },
-            "results": results
-        }, f, indent=2)
+            "success_rate_percent": round(success_rate, 2),
+            "total_inference_time_sec": round(total_inference_time, 2),
+            "avg_inference_time_sec": round(avg_inference_time, 2)
+        },
+        "config": {
+            "device": args.device,
+            "steps": args.steps,
+            "seed": args.seed,
+            "prompts_file": str(args.prompts_file),
+            "base_dir": str(args.base_dir),
+            "output_dir": str(output_dir),
+            "prompt_range": f"{args.start_id}-{args.end_id}",
+            "quantized": args.quantized if args.model == "flux2" else None,
+            "remote_encoder": args.remote_encoder if args.model == "flux2" else None,
+            "thinking": args.thinking if args.model == "step1x" else None,
+            "reflection": args.reflection if args.model == "step1x" else None,
+        },
+        "results": results
+    }
     
-    # Print summary
-    print(f"\n{'='*70}")
-    print(f"Experiment Complete")
-    print(f"{'='*70}")
-    print(f"Model: {args.model}")
-    print(f"Total prompts: {len(prompts)}")
-    print(f"Success: {success_count}")
-    print(f"Errors: {error_count}")
-    print(f"Results saved: {results_file}")
-    print(f"{'='*70}\n")
+    with open(results_file, 'w', encoding='utf-8') as f:
+        json.dump(results_data, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"✓ Results saved successfully")
+    
+    # Print final summary
+    logger.info(f"\n{'='*70}")
+    logger.info(f"EXPERIMENT COMPLETE")
+    logger.info(f"{'='*70}")
+    logger.info(f"Model: {args.model}")
+    logger.info(f"Total Prompts: {len(prompts)}")
+    logger.info(f"Successful: {success_count} ({success_rate:.1f}%)")
+    logger.info(f"Failed: {error_count}")
+    logger.info(f"Total Inference Time: {total_inference_time:.2f}s")
+    logger.info(f"Average Time per Prompt: {avg_inference_time:.2f}s")
+    logger.info(f"Results File: {results_file}")
+    logger.info(f"Log File: {[h.baseFilename for h in logger.handlers if isinstance(h, logging.FileHandler)][0]}")
+    logger.info(f"{'='*70}\n")
 
 
 def main():
