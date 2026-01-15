@@ -20,32 +20,41 @@ export default function AMTPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (check first)
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/')
+      if (window.location.pathname === '/amt') {
+        router.push('/')
+      }
+      return
     }
   }, [user, loading, router])
 
-  // Check consent
+  // Check consent (only if authenticated)
   useEffect(() => {
+    if (loading || !user) return
+    
     const consent = localStorage.getItem('irb_consent_i2i_bias')
-    if (consent !== 'agreed') {
+    if (consent !== 'agreed' && window.location.pathname === '/amt') {
       router.push('/consent')
+      return
     }
-  }, [router])
+  }, [user, loading, router])
 
-  // Check if user has already been through this page
+  // Check if user has already been through this page (only if authenticated and consented)
   useEffect(() => {
     async function checkExistingUser() {
-      if (!user) return
+      if (!user || loading) return
+      
+      const consent = localStorage.getItem('irb_consent_i2i_bias')
+      if (consent !== 'agreed') return
 
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid))
         if (userDoc.exists()) {
           const data = userDoc.data()
           // If user doc exists with createdAt, they've already been through AMT page
-          if (data.createdAt) {
+          if (data.createdAt && window.location.pathname === '/amt') {
             router.push('/select')
           }
         }
@@ -55,7 +64,7 @@ export default function AMTPage() {
     }
 
     checkExistingUser()
-  }, [user, router])
+  }, [user, loading, router])
 
   // Auto-fill from URL params (MTurk often passes these)
   useEffect(() => {

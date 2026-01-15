@@ -14,7 +14,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/consent')
+      // Only redirect if we're actually on the home page
+      if (window.location.pathname === '/') {
+        router.push('/consent')
+      }
     }
   }, [user, loading, router])
 

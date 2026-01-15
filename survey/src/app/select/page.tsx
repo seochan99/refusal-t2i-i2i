@@ -45,23 +45,37 @@ export default function SelectPage() {
   const [progress, setProgress] = useState<ProgressData>({})
   const [loadingProgress, setLoadingProgress] = useState(true)
 
+  // Redirect to login if not authenticated (check first)
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/')
+      if (window.location.pathname === '/select') {
+        router.push('/')
+      }
+      return
     }
   }, [user, loading, router])
 
+  // Check consent (only if authenticated)
   useEffect(() => {
+    if (loading || !user) return
+    
     const consent = localStorage.getItem('irb_consent_i2i_bias')
-    if (consent !== 'agreed') {
+    if (consent !== 'agreed' && window.location.pathname === '/select') {
       router.push('/consent')
+      return
     }
-  }, [router])
+  }, [user, loading, router])
 
-  // Check AMT info
+  // Check AMT info (only if authenticated and consented)
   useEffect(() => {
     async function checkAMT() {
-      if (!user) {
+      if (!user || loading) {
+        setCheckingAmt(false)
+        return
+      }
+
+      const consent = localStorage.getItem('irb_consent_i2i_bias')
+      if (consent !== 'agreed') {
         setCheckingAmt(false)
         return
       }
@@ -71,12 +85,16 @@ export default function SelectPage() {
         if (userDoc.exists()) {
           const data = userDoc.data()
           if (!data.createdAt) {
-            router.push('/amt')
+            if (window.location.pathname === '/select') {
+              router.push('/amt')
+            }
             return
           }
           setAmtWorkerId(data.amtWorkerId || null)
         } else {
-          router.push('/amt')
+          if (window.location.pathname === '/select') {
+            router.push('/amt')
+          }
           return
         }
       } catch (err) {
@@ -87,9 +105,7 @@ export default function SelectPage() {
       setCheckingAmt(false)
     }
 
-    if (!loading && user) {
-      checkAMT()
-    }
+    checkAMT()
   }, [user, loading, router])
 
   // Load progress for all experiments

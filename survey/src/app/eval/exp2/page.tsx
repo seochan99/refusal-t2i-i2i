@@ -12,17 +12,25 @@ import { getPromptText } from '@/lib/prompts'
 // Load pairwise items from JSON file
 async function loadPairwiseItems(model: string): Promise<PairwiseItem[]> {
   try {
+    console.log('Loading exp2_items.json for model:', model)
     const response = await fetch('/data/exp2_items.json')
     if (!response.ok) {
-      throw new Error('Failed to load exp2_items.json')
+      console.error('Failed to load exp2_items.json:', response.status, response.statusText)
+      throw new Error(`Failed to load exp2_items.json: ${response.status} ${response.statusText}`)
     }
     const data = await response.json()
+    console.log('Loaded JSON data:', { totalItems: data.items?.length, model })
     
     // Filter items for the specified model
     const modelItems = data.items.filter((item: any) => item.model === model)
+    console.log(`Filtered items for ${model}:`, modelItems.length)
+    
+    if (modelItems.length === 0) {
+      console.warn(`No items found for model: ${model}`)
+    }
     
     // Map to PairwiseItem format
-    return modelItems.map((item: any) => ({
+    const mappedItems = modelItems.map((item: any) => ({
       id: item.id,
       model: item.model,
       promptId: item.promptId,
@@ -36,6 +44,17 @@ async function loadPairwiseItems(model: string): Promise<PairwiseItem[]> {
       editedImageUrl: item.editedImageUrl || null,
       hasEditedPair: item.hasEditedPair || false
     }))
+    
+    // Log first item for debugging
+    if (mappedItems.length > 0) {
+      console.log('First item URLs:', {
+        source: mappedItems[0].sourceImageUrl,
+        preserved: mappedItems[0].preservedImageUrl,
+        edited: mappedItems[0].editedImageUrl
+      })
+    }
+    
+    return mappedItems
   } catch (error) {
     console.error('Error loading pairwise items:', error)
     return []
@@ -52,6 +71,8 @@ function Exp2Content() {
   const urlIndex = parseInt(searchParams.get('index') || '0')
 
   const [items, setItems] = useState<PairwiseItem[]>([])
+  const [loadingItems, setLoadingItems] = useState(true)
+  const [itemsError, setItemsError] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(urlIndex)
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [itemStartTime, setItemStartTime] = useState<number>(0)
@@ -85,8 +106,21 @@ function Exp2Content() {
     if (!user || !model) return
 
     async function loadItems() {
-      const loadedItems = await loadPairwiseItems(model)
-      setItems(loadedItems)
+      setLoadingItems(true)
+      setItemsError(null)
+      try {
+        const loadedItems = await loadPairwiseItems(model)
+        if (loadedItems.length === 0) {
+          setItemsError(`No items found for model: ${model}. Please check exp2_items.json`)
+        } else {
+          setItems(loadedItems)
+        }
+      } catch (error: any) {
+        console.error('Failed to load items:', error)
+        setItemsError(`Failed to load items: ${error.message}`)
+      } finally {
+        setLoadingItems(false)
+      }
     }
     loadItems()
 
@@ -214,6 +248,37 @@ function Exp2Content() {
     )
   }
 
+  // Show loading state while items are being loaded
+  if (loadingItems) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="text-center panel-elevated p-12 max-w-lg">
+          <div className="text-base mb-4" style={{ color: 'var(--text-primary)' }}>Loading evaluation items...</div>
+          <div className="text-sm" style={{ color: 'var(--text-muted)' }}>Fetching from exp2_items.json</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error if items failed to load
+  if (itemsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="text-center panel-elevated p-12 max-w-lg">
+          <h1 className="text-2xl font-semibold mb-4" style={{ color: 'var(--error-text)' }}>Error Loading Items</h1>
+          <p className="text-base mb-4" style={{ color: 'var(--text-secondary)' }}>{itemsError}</p>
+          <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
+            Model: {model}<br />
+            Please check the browser console for details.
+          </p>
+          <button onClick={() => window.location.reload()} className="btn btn-primary px-8 py-3 text-base font-semibold">
+            Reload Page
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // Redirect to completion page when all items are done
   useEffect(() => {
     if (items.length > 0 && completedIds.size === items.length) {
@@ -221,7 +286,7 @@ function Exp2Content() {
     }
   }, [items.length, completedIds.size, model, router])
 
-  if (!currentItem) {
+  if (!currentItem || items.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center p-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="text-center panel-elevated p-12 max-w-lg">

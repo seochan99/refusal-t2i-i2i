@@ -13,18 +13,23 @@ export default function ConsentPage() {
   const router = useRouter()
   const [agreed, setAgreed] = useState(false)
 
-  // Check if user already consented
-  useEffect(() => {
-    const consent = localStorage.getItem('irb_consent_i2i_bias')
-    if (consent === 'agreed') {
-      router.push('/amt')
-    }
-  }, [router])
-
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (check first)
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/')
+      if (window.location.pathname === '/consent') {
+        router.push('/')
+      }
+      return
+    }
+  }, [user, loading, router])
+
+  // Check if user already consented (only if authenticated)
+  useEffect(() => {
+    if (loading || !user) return
+    
+    const consent = localStorage.getItem('irb_consent_i2i_bias')
+    if (consent === 'agreed' && window.location.pathname === '/consent') {
+      router.push('/amt')
     }
   }, [user, loading, router])
 
