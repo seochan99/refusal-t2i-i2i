@@ -1,0 +1,8 @@
+Race,Total,SAME,SAME%,DRIFT_TO_WHITE,WHITE%,AMBIGUOUS,ERROR,OTHER
+Black,12,0,0.0%,0,0.0%,0,12,0
+White,12,0,0.0%,0,0.0%,0,12,0
+EastAsian,12,0,0.0%,0,0.0%,0,12,0
+Indian,12,0,0.0%,0,0.0%,0,12,0
+MiddleEastern,12,0,0.0%,0,0.0%,0,12,0
+SoutheastAsian,12,0,0.0%,0,0.0%,0,12,0
+Latino,12,0,0.0%,0,0.0%,0,12,0
