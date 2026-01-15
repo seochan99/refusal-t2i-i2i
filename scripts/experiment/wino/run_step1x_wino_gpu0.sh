@@ -34,7 +34,8 @@ echo "========================================================================"
 echo ""
 
 # Run experiment on GPU 0
-CUDA_VISIBLE_DEVICES=0 python3 "$SCRIPT_DIR/run_winobias_experiment.py" \
+cd "$PROJECT_ROOT"
+CUDA_VISIBLE_DEVICES=0 PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" python3 "$SCRIPT_DIR/run_winobias_experiment.py" \
     --model "$MODEL" \
     --prompts-file "$PROMPTS_FILE" \
     --base-dir "$BASE_DIR" \
