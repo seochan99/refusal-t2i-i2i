@@ -6,9 +6,9 @@
 #   bash scripts/experiment/run_qwen_wino.sh [GPU_ID] [START_ID] [END_ID]
 #
 # Examples:
-#   bash scripts/experiment/run_qwen_wino.sh 0 1 50    # Full experiment on GPU 0
-#   bash scripts/experiment/run_qwen_wino.sh 0 1 25    # First 25 prompts (male-centered)
-#   bash scripts/experiment/run_qwen_wino.sh 1 26 50   # Last 25 prompts (female-centered)
+#   bash scripts/experiment/wino/run_qwen_wino.sh 0 1 50    # Full experiment on GPU 0
+#   bash scripts/experiment/wino/run_qwen_wino.sh 0 1 25    # First 25 prompts
+#   bash scripts/experiment/wino/run_qwen_wino.sh 1 26 50   # Last 25 prompts
 
 set -e
 
@@ -21,7 +21,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
 OUTPUT_DIR="data/results/experiments/winobias/qwen"
-PROMPTS_FILE="data/prompts/winobias_50_prompts.json"
+PROMPTS_FILE="data/prompts/winobias_prompts.json"
 BASE_DIR="data/source_images/final"
 
 # Model parameters

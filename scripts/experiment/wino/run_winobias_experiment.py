@@ -26,19 +26,17 @@ from src.models.qwen_wrapper import QwenImageEditWrapper
 from src.models.step1x_wrapper import Step1XWrapper
 
 
-def identity_to_path(identity: str, base_dir: Path) -> Path:
-    """Convert identity string to image path."""
-    parts = identity.strip().split()
+def image_filename_to_path(filename: str, base_dir: Path) -> Path:
+    """Convert image filename to full path."""
+    # filename format: Race_Gender_Age.jpg (e.g., Black_Male_40s.jpg)
+    parts = filename.replace('.jpg', '').split('_')
     if len(parts) < 3:
-        raise ValueError(f"Invalid identity string: {identity}")
+        raise ValueError(f"Invalid image filename: {filename}")
     race = parts[0]
-    gender = parts[1]
-    age = parts[2]
-    filename = f"{race}_{gender}_{age}.jpg"
     return base_dir / race / filename
 
 
-def load_prompts(prompts_file: Path) -> dict:
+def load_prompts(prompts_file: Path) -> list:
     """Load WinoBias prompts from JSON."""
     with open(prompts_file, 'r') as f:
         return json.load(f)
@@ -47,9 +45,8 @@ def load_prompts(prompts_file: Path) -> dict:
 def run_experiment(args):
     """Run WinoBias experiment with specified model."""
     
-    # Load prompts
-    prompts_data = load_prompts(args.prompts_file)
-    prompts = prompts_data['prompts']
+    # Load prompts (new format: list of dicts with id, prompt, input_image_1, input_image_2)
+    prompts = load_prompts(args.prompts_file)
     
     # Filter prompts by ID range
     prompts = [p for p in prompts if args.start_id <= p['id'] <= args.end_id]
@@ -98,20 +95,19 @@ def run_experiment(args):
     
     for idx, prompt_entry in enumerate(prompts, 1):
         prompt_id = prompt_entry['id']
-        prompt_text = prompt_entry['template']
-        person_a = prompt_entry['person_a']
-        person_b = prompt_entry['person_b']
-        category = prompt_entry['category']
+        prompt_text = prompt_entry['prompt']
+        image_1_filename = prompt_entry['input_image_1']
+        image_2_filename = prompt_entry['input_image_2']
         
-        print(f"\n[{idx}/{len(prompts)}] Prompt {prompt_id} ({category})")
+        print(f"\n[{idx}/{len(prompts)}] Prompt {prompt_id}")
         print(f"  Text: {prompt_text}")
-        print(f"  Person A: {person_a}")
-        print(f"  Person B: {person_b}")
+        print(f"  Image 1: {image_1_filename}")
+        print(f"  Image 2: {image_2_filename}")
         
         try:
             # Load source images
-            img_a_path = identity_to_path(person_a, args.base_dir)
-            img_b_path = identity_to_path(person_b, args.base_dir)
+            img_a_path = image_filename_to_path(image_1_filename, args.base_dir)
+            img_b_path = image_filename_to_path(image_2_filename, args.base_dir)
             
             if not img_a_path.exists():
                 raise FileNotFoundError(f"Image A not found: {img_a_path}")
@@ -138,7 +134,7 @@ def run_experiment(args):
             
             if result.success:
                 # Save output image
-                output_filename = f"prompt_{prompt_id:02d}_{category}_{timestamp}.png"
+                output_filename = f"prompt_{prompt_id:03d}_{timestamp}.png"
                 output_path = output_dir / output_filename
                 result.output_image.save(output_path)
                 
@@ -147,11 +143,9 @@ def run_experiment(args):
                 
                 results.append({
                     "prompt_id": prompt_id,
-                    "category": category,
                     "prompt": prompt_text,
-                    "person_a": person_a,
-                    "person_b": person_b,
-                    "stereotype_role": prompt_entry['stereotype_role'],
+                    "input_image_1": image_1_filename,
+                    "input_image_2": image_2_filename,
                     "success": True,
                     "output_file": output_filename,
                     "latency_ms": result.latency_ms,
@@ -164,11 +158,9 @@ def run_experiment(args):
                 
                 results.append({
                     "prompt_id": prompt_id,
-                    "category": category,
                     "prompt": prompt_text,
-                    "person_a": person_a,
-                    "person_b": person_b,
-                    "stereotype_role": prompt_entry['stereotype_role'],
+                    "input_image_1": image_1_filename,
+                    "input_image_2": image_2_filename,
                     "success": False,
                     "error": result.error_message,
                     "refusal_type": result.refusal_type.value,
@@ -180,10 +172,9 @@ def run_experiment(args):
             print(f"✗ EXCEPTION: {e}")
             results.append({
                 "prompt_id": prompt_id,
-                "category": category,
                 "prompt": prompt_text,
-                "person_a": person_a,
-                "person_b": person_b,
+                "input_image_1": image_1_filename,
+                "input_image_2": image_2_filename,
                 "success": False,
                 "error": str(e)
             })
@@ -237,7 +228,7 @@ def main():
     # Input/Output
     parser.add_argument(
         "--prompts-file",
-        default="data/prompts/winobias_50_prompts.json",
+        default="data/prompts/winobias_prompts.json",
         help="Path to WinoBias prompts JSON"
     )
     parser.add_argument(
