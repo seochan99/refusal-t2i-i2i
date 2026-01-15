@@ -17,18 +17,28 @@
 
 ## Usage
 
+### Step1X (GPU 0/1 분할)
+
 ```bash
-# GPU별 실행
-CUDA_VISIBLE_DEVICES=0 bash scripts/experiment/exp2_preservation/run_step1x_preservation.sh
-CUDA_VISIBLE_DEVICES=1 bash scripts/experiment/exp2_preservation/run_flux_preservation.sh
-CUDA_VISIBLE_DEVICES=2 bash scripts/experiment/exp2_preservation/run_qwen_preservation.sh
+# 터미널 1 - GPU 0 (Female, 168 tasks)
+CUDA_VISIBLE_DEVICES=0 bash scripts/experiment/exp2_preservation/run_step1x_gpu0.sh
 
-# 특정 조건만
-bash scripts/experiment/exp2_preservation/run_step1x_preservation.sh --edited
-bash scripts/experiment/exp2_preservation/run_step1x_preservation.sh --preserved
+# 터미널 2 - GPU 1 (Male, 168 tasks)
+CUDA_VISIBLE_DEVICES=1 bash scripts/experiment/exp2_preservation/run_step1x_gpu1.sh
+```
 
-# 재개
-bash scripts/experiment/exp2_preservation/run_step1x_preservation.sh --resume 100
+### FLUX / Qwen (단일 GPU)
+
+```bash
+CUDA_VISIBLE_DEVICES=0 bash scripts/experiment/exp2_preservation/run_flux_preservation.sh
+CUDA_VISIBLE_DEVICES=1 bash scripts/experiment/exp2_preservation/run_qwen_preservation.sh
+```
+
+### 특정 조건만 실행
+
+```bash
+bash scripts/experiment/exp2_preservation/run_step1x_gpu0.sh --edited     # identity prompt 포함
+bash scripts/experiment/exp2_preservation/run_step1x_gpu0.sh --preserved  # baseline만
 ```
 
 ## Output

@@ -106,7 +106,8 @@ def run_preservation_experiment(
     experiment_id: Optional[str] = None,
     resume_from: int = 0,
     output_dir: Optional[Path] = None,
-    condition: str = "edited"  # "edited" (with identity prompt) or "preserved" (baseline)
+    condition: str = "edited",  # "edited" (with identity prompt) or "preserved" (baseline)
+    gender_filter: Optional[str] = None  # "Female" or "Male" for GPU split
 ):
     """
     Run Experiment 2: Identity Preservation evaluation.
@@ -118,6 +119,7 @@ def run_preservation_experiment(
         resume_from: Request index to resume from
         output_dir: Override output directory
         condition: "edited" = with identity preservation prompt, "preserved" = baseline (original prompt only)
+        gender_filter: "Female" or "Male" to filter images (for GPU split)
     """
     # Setup paths
     source_dir = PROJECT_ROOT / "data" / "source_images" / "final"
@@ -148,6 +150,8 @@ def run_preservation_experiment(
     print(f"Experiment ID: {experiment_id}")
     print(f"Output: {output_dir}")
     print(f"Prompts: {list(EXP2_PROMPTS.keys())}")
+    if gender_filter:
+        print(f"Gender Filter: {gender_filter}")
     print("=" * 80)
 
     # Load identity prompts (only needed for "edited" condition)
@@ -156,11 +160,12 @@ def run_preservation_experiment(
         identity_prompts = load_identity_prompts(identity_prompts_file)
         print(f"✓ Loaded {len(identity_prompts)} identity prompts from {identity_prompts_file.name}")
 
-    # Build task list: 4 prompts × 84 images = 336 tasks
+    # Build task list: 4 prompts × 84 images = 336 tasks (or 168 if gender filtered)
     tasks = []
+    genders_to_process = [gender_filter] if gender_filter else GENDERS
     for prompt_id, prompt_data in EXP2_PROMPTS.items():
         for race in RACES:
-            for gender in GENDERS:
+            for gender in genders_to_process:
                 for age in AGES:
                     image_key = f"{race}_{gender}_{age}"
                     source_path = source_dir / race / f"{image_key}.jpg"
@@ -334,6 +339,9 @@ def main():
                        help="Resume from task index")
     parser.add_argument("--output-dir", type=str, default=None,
                        help="Override output directory")
+    parser.add_argument("--gender", type=str, default=None,
+                       choices=["Female", "Male"],
+                       help="Filter by gender (for GPU split)")
 
     args = parser.parse_args()
 
@@ -345,7 +353,8 @@ def main():
         experiment_id=args.experiment_id,
         resume_from=args.resume_from,
         output_dir=output_dir,
-        condition=args.condition
+        condition=args.condition,
+        gender_filter=args.gender
     )
 
 
