@@ -72,23 +72,18 @@ export default function AMTPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!workerId.trim()) {
-      setError('Please enter your Worker ID')
-      return
-    }
-
     if (!user) return
 
     setSaving(true)
     setError('')
 
     try {
-      // Save to users collection
+      // Save to users collection (with or without AMT info)
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
-        amtWorkerId: workerId.trim(),
+        amtWorkerId: workerId.trim() || null,
         amtAssignmentId: assignmentId.trim() || null,
         amtHitId: hitId.trim() || null,
         createdAt: serverTimestamp(),
@@ -96,13 +91,43 @@ export default function AMTPage() {
       }, { merge: true })
 
       // Also save to localStorage as backup
-      localStorage.setItem('amt_worker_id', workerId.trim())
-      if (assignmentId) localStorage.setItem('amt_assignment_id', assignmentId.trim())
+      if (workerId.trim()) {
+        localStorage.setItem('amt_worker_id', workerId.trim())
+        if (assignmentId) localStorage.setItem('amt_assignment_id', assignmentId.trim())
+      }
 
       router.push('/select')
     } catch (err) {
       console.error('Error saving AMT info:', err)
       setError('Failed to save. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSkip = async () => {
+    if (!user) return
+
+    setSaving(true)
+    setError('')
+
+    try {
+      // Save user without AMT info
+      await setDoc(doc(db, 'users', user.uid), {
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        amtWorkerId: null,
+        amtAssignmentId: null,
+        amtHitId: null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true })
+
+      router.push('/select')
+    } catch (err) {
+      console.error('Error saving user info:', err)
+      setError('Failed to proceed. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -135,14 +160,14 @@ export default function AMTPage() {
 
         <div className="panel p-4 mb-6" style={{ backgroundColor: 'var(--info-bg)', borderColor: 'var(--info-text)' }}>
           <p className="text-sm" style={{ color: 'var(--info-text)' }}>
-            Please enter your Amazon Mechanical Turk Worker ID. This helps us track your progress and ensure you receive credit for your work.
+            If you're an Amazon Mechanical Turk worker, please enter your Worker ID to track your progress and ensure proper credit. Otherwise, you can skip this step.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Worker ID <span style={{ color: 'var(--warning-text)' }}>*</span>
+              Worker ID <span style={{ color: 'var(--text-muted)' }}>(optional)</span>
             </label>
             <input
               type="text"
@@ -155,7 +180,6 @@ export default function AMTPage() {
                 border: '1px solid var(--border-default)',
                 color: 'var(--text-primary)'
               }}
-              required
             />
           </div>
 
@@ -201,17 +225,34 @@ export default function AMTPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={saving || !workerId.trim()}
-            className="btn btn-primary w-full py-3 text-base font-semibold"
-          >
-            {saving ? 'Saving...' : 'Continue to Evaluation'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleSkip}
+              disabled={saving}
+              className="btn w-full py-3 text-base font-semibold"
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                border: '1px solid var(--border-default)',
+                color: 'var(--text-secondary)'
+              }}
+            >
+              Skip
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn btn-primary w-full py-3 text-base font-semibold"
+            >
+              {saving ? 'Saving...' : 'Continue'}
+            </button>
+          </div>
         </form>
 
         <p className="text-xs mt-6 text-center" style={{ color: 'var(--text-muted)' }}>
-          Your Worker ID will be used to track your evaluations and generate a completion code.
+          {workerId.trim() 
+            ? 'Your Worker ID will be used to track your evaluations and generate a completion code.'
+            : 'You can skip entering a Worker ID and proceed directly to the evaluation.'}
         </p>
       </div>
     </div>
