@@ -8,7 +8,7 @@ Requires custom diffusers branch: https://github.com/Peyton-Chen/diffusers (bran
 """
 
 import time
-from typing import Optional
+from typing import Optional, List, Union
 from PIL import Image
 
 from .base import I2IModel, EditResult, RefusalType
@@ -89,7 +89,7 @@ class Step1XWrapper(I2IModel):
 
     def edit(
         self,
-        source_image: Image.Image,
+        source_image: Union[Image.Image, List[Image.Image]],
         prompt: str,
         true_cfg_scale: float = 6.0,
         num_inference_steps: int = 50,
@@ -100,7 +100,7 @@ class Step1XWrapper(I2IModel):
         Apply edit to image using Step1X-Edit-v1p2.
 
         Args:
-            source_image: Input image
+            source_image: Input image(s) - supports multi-image input
             prompt: Edit instruction
             true_cfg_scale: Classifier-free guidance scale
             num_inference_steps: Number of denoising steps
@@ -113,7 +113,12 @@ class Step1XWrapper(I2IModel):
         start_time = time.time()
 
         try:
-            source_image = source_image.convert("RGB")
+            # Handle single or multiple images
+            if isinstance(source_image, Image.Image):
+                images = source_image.convert("RGB")
+            else:
+                # Multi-image input
+                images = [img.convert("RGB") for img in source_image]
 
             # Setup generator
             if seed is not None:
@@ -123,7 +128,7 @@ class Step1XWrapper(I2IModel):
 
             # Run inference
             pipe_output = self.pipe(
-                image=source_image,
+                image=images,
                 prompt=prompt,
                 num_inference_steps=num_inference_steps,
                 true_cfg_scale=true_cfg_scale,
