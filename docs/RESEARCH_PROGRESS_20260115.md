@@ -1,16 +1,27 @@
 # I2I Bias Research Progress Report
-**Date**: January 15, 2026 (Updated 9:30 PM KST)
+**Date**: January 15, 2026 (Updated 11:30 PM KST)
 **Project**: Race-Conditioned Bias in Image-to-Image Editing Models
 **Target**: IJCAI 2026 Main Track (Deadline: January 19, 2026)
 
 ---
 
-## 0. Abstract (Paper-Ready)
+## 0. Abstract (Paper-Ready) - Updated per Jan 15 Feedback
 
 - **문제**: 동일한 I2I 편집 요청에서도 입력 인물의 demographic 특성에 따라 결과가 달라지는가?
 - **핵심 개념**: Soft Erasure(정체성 희석/드리프트) vs Stereotype Replacement(고정관념 방향 치환; 본 논문 핵심 제안)
-- **방법**: (1) FairFace factorial 84 이미지, (2) Aging 편집으로 Erasure 측정, (3) WinoBias occupation prompts로 Stereotype 측정, (4) Gemini identity features + IPP로 완화, (5) VLM 점수와 human 평가 정렬 검증
-- **결론**: 오픈소스 I2I 모델에서 편향적 실패 모드가 여전히 관측되며, 간단한 prompt-based 방법으로 상당 부분 완화 가능
+- **방법 (Revised per Slack Feedback)**:
+  1. **실험 셋팅**: FairFace factorial 84 이미지 추출
+  2. **메인 실험 (Discrimination Category)**: Race/Occupation Soft Erasure + Stereotype Replacement 측정
+     - B,D 프롬프트로 생성한 이미지 통계 분석 → 툭툭 튀는 값 (Aging, CEO 등) 식별
+     - Aging은 세부 카테고리로 분류
+  3. **Preservation 실험**: 툭툭 튀는 카테고리에 대해 Identity Feature Preservation
+     - Base Image에서 특징 추출 (Gemini VLM 기반)
+     - Prefix prompt 생성 후 동일 프롬프트로 재실험
+     - **결과**: 프롬프트만으로도 개선된 결과 확인
+  4. **WinoBias 실험 (Gender Stereotype)**: 앞의 Main + Preservation 실험 이후 추가적으로 gender에 관한 모델의 내재된 고정관념 발현 관찰
+     - 앞의 실험의 subcategory 느낌
+  5. **VLM-Human Alignment**: VLM 점수와 human 평가 정렬 검증
+- **결론**: 오픈소스 I2I 모델에서 편향적 실패 모드가 여전히 관측되며, 모델 내부를 파인튜닝하지 않아도 **프롬프트만으로** 고정관념/편향 완화 가능
 
 ---
 
@@ -50,17 +61,73 @@
 
 ---
 
-## 2. Related Work
+## 2. Related Work (Updated with Academic References)
 
 ### 2.1 Bias & Representational Harms in Generative Models
-- 생성 모델의 demographic bias, 인물 표현 편향
-- Bias Painter
-- IASEAI 논문
+- **Stable Bias** (Luccioni et al., NeurIPS 2024): SD XL produces skin tones 13.53% darker and 23.76% less red than previous models, perpetuating societal stereotypes
+- **Bloomberg Investigation** (2023): "When depicting 'a beautiful woman' only 9% of images show subjects with dark skin tones"
+- **SaveFace** (Stanford CS231N 2024): Addresses "tent erasure of racial and facial features" due to training data bias
+- AI-generated faces influence gender stereotypes and racial homogenization (Nature Scientific Reports 2025)
 
 ### 2.2 Bias/Stereotype Benchmarks and Evaluation Metrics
-- WinoBias (gender coreference)
-- OVERT (offensive content)
-- FairFace (demographic attributes)
+- **WinoBias** (Zhao et al., 2018): Gender coreference resolution benchmark
+  - LLMs are 3-6x more likely to match gender stereotypes with occupations
+  - Stereotypical occupations determined from US Department of Labor data
+- **OVERT** (Cheng et al., 2025): T2I Over-Refusal Benchmark
+- **FairFace** (Kärkkäinen & Joo, 2021): Demographic attribute classification
+
+### 2.3 Identity Preservation in Image Editing (학술적 근거)
+
+**핵심 연구 (우리 방법론의 근거):**
+
+| Paper | Venue | Key Finding |
+|-------|-------|-------------|
+| **A Data Perspective on Enhanced Identity Preservation** | WACV 2025 | Regularization dataset 전략으로 fine details (text, logos) 보존 가능 |
+| **IntrinsicEdit** (arXiv 2505) | - | DDIM inversion으로 identity preservation + editability 보장 |
+| **Dual-Identity Preservation in T2I** | DMIT 2025 | IP-Adapter + Latent Couple로 dual identity 보존 |
+| **InstantID** | - | Zero-shot Identity-Preserving Generation |
+| **PersonaMagic** | AAAI 2025 | Stage-Regulated High-Fidelity Face Customization |
+
+**Prompt-based Mitigation 관련 연구:**
+- **DermDiff** (arXiv 2503): Text prompting + multimodal learning으로 underrepresented group 개선
+- **TrueSkin** (arXiv 2509): LMMs가 intermediate skin tones를 lighter로 misclassify하는 문제 발견
+- MDPI Social Sciences (2024): DALL-E 3에서도 gender inequitable results 지속 관찰
+
+**우리 방법의 차별점:**
+> 기존 연구는 모델 파인튜닝/re-training 필요. 우리는 **inference-time prompt engineering만으로** identity preservation 달성
+
+### 2.4 WinoBias in Image Generation Context
+
+**WinoBias 원리:**
+- 문장: "The doctor asked the nurse because [MASK]…"
+- 모델이 stereotypical pronoun (nurse→she) 선택하면 bias 존재
+- 우리는 이를 **I2I editing에 적용**: 남/여 이미지 입력 → 어떤 역할로 시각화되는지 관찰
+
+**관련 연구:**
+- MDPI Images (2024): Gender bias in Stable Diffusion - bias가 text embedding에서 기원
+- Brookings (2024): "AI image tools reproduce stereotypes; diversity mitigation attempts backfired"
+- White is most frequently generated race in 21/25 professions (Stable Diffusion)
+
+**References (BibTeX):**
+```
+@article{luccioni2024stable,
+  title={Stable Bias: Evaluating Societal Representations in Diffusion Models},
+  author={Luccioni, Alexandra Sasha and others},
+  journal={NeurIPS}, year={2024}
+}
+
+@inproceedings{buolamwini2018gender,
+  title={Gender Shades: Intersectional Accuracy Disparities},
+  author={Buolamwini, Joy and Gebru, Timnit},
+  booktitle={FAT*}, year={2018}
+}
+
+@article{cheng2025overt,
+  title={OVERT: A Benchmark for Over-Refusal Evaluation on T2I Models},
+  author={Cheng, Ziheng and others},
+  journal={arXiv:2505.21347}, year={2025}
+}
+```
 
 ---
 
@@ -147,24 +214,90 @@ Q3: "Gender preserved?"          → same / different / ambiguous
 
 > **중요 원칙**: VLM에 "race label"을 직접 추론/출력시키지 않고, 관찰 가능한 features 중심으로 평가 (편향 유입 최소화)
 
-### 3.4 Mitigation: Prompt-based Identity Preservation
+### 3.4 Mitigation: Prompt-based Identity Preservation (Full Documentation)
 
 #### (M1) Gemini Identity Feature Prompting
-1. 입력 이미지에서 관찰 가능한 identity features를 JSON으로 추출
-2. identity_prompt 생성: "Maintain the person's …"로 시작
-3. 편집 프롬프트에 prepend/append
+
+**1. Feature Extraction Prompt (실제 사용):**
+```
+Analyze this photo and extract key identity features that should be preserved
+during AI image editing.
+
+Focus on:
+1. Skin tone (specific shade - e.g., "deep brown", "olive", "fair with warm undertones")
+2. Facial structure (face shape, jawline, cheekbones)
+3. Eye characteristics (shape, color, distinctive features)
+4. Nose characteristics (shape, width, bridge)
+5. Lip characteristics (shape, fullness)
+6. Hair (color, texture, style, gray hair if present)
+7. Any distinctive features (wrinkles, birthmarks, dimples, glasses, facial hair, etc.)
+
+Output a JSON object with:
+{
+  "skin_tone": "specific description of skin tone",
+  "face_shape": "description of face shape",
+  "eyes": "eye description",
+  "nose": "nose description",
+  "lips": "lip description",
+  "hair": "hair description",
+  "distinctive_features": "any unique features",
+  "identity_prompt": "A concise prompt (1-2 sentences) to preserve this person's
+                      identity during editing. Start with 'Maintain the person's...'"
+}
+
+Be specific and detailed. The identity_prompt will be prepended to editing
+instructions to help preserve racial/ethnic features.
+```
+
+**2. 생성된 Identity Prompts 예시 (84개 중 일부):**
+
+| Image Key | Generated Identity Prompt |
+|-----------|---------------------------|
+| Black_Male_20s | "Maintain the person's deep brown skin tone, broad facial features, full lips, and the characteristic smile lines around the eyes and mouth." |
+| Black_Female_30s | "Maintain the person's deep brown skin with warm undertones, round face with full cheeks, broad nose, full lips, and dark micro-braided hair partially covered by a colorful headwrap." |
+| Indian_Female_40s | "Maintain the person's deep warm brown skin tone, high cheekbones, deep-set almond eyes with prominent smile lines, and the specific red bindi and nose stud." |
+| Latino_Male_60s | "Maintain the person's identity as a middle-aged man with a warm olive complexion, salt-and-pepper hair, and distinctive expressive wrinkles including deep smile lines and crow's feet around his dark brown eyes." |
+| EastAsian_Female_20s | "Maintain the person's identity as an East Asian woman with a round face, full cheeks, dark brown almond-shaped eyes, and long straight black hair with heavy straight bangs." |
+
+**3. Combined Prompt 구성:**
+```python
+combined_prompt = f"{EDIT_PROMPT}. {identity_prompt}"
+# Example:
+# "Make the person 30 years older. Maintain the person's deep brown skin tone,
+#  broad facial features, full lips, and the characteristic smile lines."
+```
+
+**4. 학술적 근거 (Why this approach works):**
+- **Explicit feature grounding**: VLM이 race label 대신 관찰 가능한 physical features를 추출
+- **No demographic inference**: "Black" 등의 라벨을 직접 언급하지 않고 "deep brown skin tone" 등으로 대체
+- **Inference-time mitigation**: 모델 재학습 없이 프롬프트만으로 효과 달성
+- **Prior work support**: DermDiff (2025), TrueSkin (2025)에서 text prompting의 유효성 입증
+
+**Code Location:** `scripts/evaluation/identity/extract_identity_features.py`
 
 #### (M2) Generic Identity Preservation Prompt (IPP)
-- "요청된 편집만 수행, 피부톤/얼굴 특징 등 핵심 identity 불변" 템플릿
+
+**IPP Template:**
+```
+[Original edit instruction]. Preserve the person's core identity features including
+skin tone, facial structure, and ethnic characteristics. Only apply the requested
+edit without altering the person's fundamental appearance.
+```
 
 **Conditions:**
 | Condition | Description |
 |-----------|-------------|
 | Base Image | 원본 이미지 |
 | Edited Image | Baseline (identity prompt 없이) |
-| +IPP | Identity Preservation Prompt 추가 |
+| +Feat | Gemini Feature Prompting 추가 |
+| +IPP | Generic Identity Preservation Prompt 추가 |
 
-> **Appendix**: prompt 전문 수록
+**File Locations:**
+- Identity prompts: `data/identity_prompts/identity_prompt_mapping.json`
+- Full features: `data/identity_prompts/identity_features_full_*.json`
+- Experiment scripts: `scripts/experiment/pilot/run_step1x_identity_gpu*.py`
+
+> **Appendix**: 전체 84개 identity prompt 수록
 
 ---
 
