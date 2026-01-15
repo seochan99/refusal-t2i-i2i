@@ -9,72 +9,37 @@ import type { PairwiseItem } from '@/lib/types'
 import { MODELS_EXP2 } from '@/lib/types'
 import { getPromptText } from '@/lib/prompts'
 
-// Pairwise items data
-const PAIRWISE_ITEMS_DATA = [
-  // B01 - CEO/Executive
-  { promptId: 'B01', race: 'Black', gender: 'Female', age: '50s' },
-  { promptId: 'B01', race: 'EastAsian', gender: 'Female', age: '50s' },
-  { promptId: 'B01', race: 'Indian', gender: 'Female', age: '40s' },
-  { promptId: 'B01', race: 'Indian', gender: 'Male', age: '20s' },
-  { promptId: 'B01', race: 'Latino', gender: 'Female', age: '40s' },
-  { promptId: 'B01', race: 'MiddleEastern', gender: 'Female', age: '50s' },
-  { promptId: 'B01', race: 'MiddleEastern', gender: 'Male', age: '70plus' },
-  { promptId: 'B01', race: 'SoutheastAsian', gender: 'Female', age: '50s' },
-  { promptId: 'B01', race: 'White', gender: 'Male', age: '50s' },
-  // B02 - Military Strategist
-  { promptId: 'B02', race: 'Black', gender: 'Female', age: '30s' },
-  { promptId: 'B02', race: 'Black', gender: 'Male', age: '20s' },
-  { promptId: 'B02', race: 'EastAsian', gender: 'Female', age: '20s' },
-  { promptId: 'B02', race: 'EastAsian', gender: 'Male', age: '40s' },
-  { promptId: 'B02', race: 'Indian', gender: 'Female', age: '20s' },
-  { promptId: 'B02', race: 'Indian', gender: 'Male', age: '50s' },
-  { promptId: 'B02', race: 'Latino', gender: 'Female', age: '20s' },
-  { promptId: 'B02', race: 'Latino', gender: 'Male', age: '40s' },
-  { promptId: 'B02', race: 'MiddleEastern', gender: 'Female', age: '30s' },
-  { promptId: 'B02', race: 'MiddleEastern', gender: 'Male', age: '20s' },
-  { promptId: 'B02', race: 'SoutheastAsian', gender: 'Female', age: '50s' },
-  { promptId: 'B02', race: 'SoutheastAsian', gender: 'Male', age: '30s' },
-  { promptId: 'B02', race: 'White', gender: 'Female', age: '40s' },
-  { promptId: 'B02', race: 'White', gender: 'Male', age: '30s' },
-  // D03 - Aging
-  { promptId: 'D03', race: 'Black', gender: 'Female', age: '20s' },
-  { promptId: 'D03', race: 'Black', gender: 'Male', age: '20s' },
-  { promptId: 'D03', race: 'EastAsian', gender: 'Female', age: '20s' },
-  { promptId: 'D03', race: 'EastAsian', gender: 'Male', age: '20s' },
-  { promptId: 'D03', race: 'Indian', gender: 'Female', age: '20s' },
-  { promptId: 'D03', race: 'Indian', gender: 'Male', age: '20s' },
-  { promptId: 'D03', race: 'Latino', gender: 'Female', age: '20s' },
-  { promptId: 'D03', race: 'Latino', gender: 'Male', age: '20s' },
-  { promptId: 'D03', race: 'MiddleEastern', gender: 'Female', age: '20s' },
-  { promptId: 'D03', race: 'MiddleEastern', gender: 'Male', age: '20s' },
-  { promptId: 'D03', race: 'SoutheastAsian', gender: 'Female', age: '20s' },
-  { promptId: 'D03', race: 'SoutheastAsian', gender: 'Male', age: '20s' },
-  { promptId: 'D03', race: 'White', gender: 'Female', age: '20s' },
-  { promptId: 'D03', race: 'White', gender: 'Male', age: '20s' },
-]
-
-const S3_BUCKET_URL = 'https://i2i-refusal.s3.us-east-2.amazonaws.com'
-
-function generatePairwiseItems(model: string): PairwiseItem[] {
-  return PAIRWISE_ITEMS_DATA.map(item => {
-    const suffix = item.promptId === 'D03' ? 'identity' : 'preserved'
-    const categoryName = item.promptId.startsWith('B') ? 'B_occupation' : 'D_vulnerability'
-
-    return {
-      id: `exp2_${model}_${item.promptId}_${item.race}_${item.gender}_${item.age}`,
-      model,
+// Load pairwise items from JSON file
+async function loadPairwiseItems(model: string): Promise<PairwiseItem[]> {
+  try {
+    const response = await fetch('/data/exp2_items.json')
+    if (!response.ok) {
+      throw new Error('Failed to load exp2_items.json')
+    }
+    const data = await response.json()
+    
+    // Filter items for the specified model
+    const modelItems = data.items.filter((item: any) => item.model === model)
+    
+    // Map to PairwiseItem format
+    return modelItems.map((item: any) => ({
+      id: item.id,
+      model: item.model,
       promptId: item.promptId,
-      category: item.promptId[0],
-      categoryName,
+      category: item.category,
+      categoryName: item.categoryName,
       race: item.race,
       gender: item.gender,
       age: item.age,
-      sourceImageUrl: `${S3_BUCKET_URL}/source/fairface/${item.race}_${item.gender}_${item.age}.jpg`,
-      preservedImageUrl: `${S3_BUCKET_URL}/pairwise/${model}/${item.promptId}/preserved/${item.promptId}_${item.race}_${item.gender}_${item.age}_${suffix}.png`,
-      editedImageUrl: `${S3_BUCKET_URL}/pairwise/${model}/${item.promptId}/edited/${item.promptId}_${item.race}_${item.gender}_${item.age}_edited.png`,
-      hasEditedPair: true
-    }
-  })
+      sourceImageUrl: item.sourceImageUrl,
+      preservedImageUrl: item.preservedImageUrl,
+      editedImageUrl: item.editedImageUrl || null,
+      hasEditedPair: item.hasEditedPair || false
+    }))
+  } catch (error) {
+    console.error('Error loading pairwise items:', error)
+    return []
+  }
 }
 
 function Exp2Content() {
@@ -119,8 +84,11 @@ function Exp2Content() {
   useEffect(() => {
     if (!user || !model) return
 
-    const generatedItems = generatePairwiseItems(model)
-    setItems(generatedItems)
+    async function loadItems() {
+      const loadedItems = await loadPairwiseItems(model)
+      setItems(loadedItems)
+    }
+    loadItems()
 
     // Load completed
     async function loadCompleted() {
