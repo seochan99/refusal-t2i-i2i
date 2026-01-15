@@ -12,7 +12,7 @@ from google import genai
 from PIL import Image
 import time
 
-GEMINI_API_KEY = "AIzaSyCYNx5TMv-2cPsPIBdHCZ6PuG0c_HQXNxY"
+GEMINI_API_KEY = ""
 
 SOURCE_DIR = Path("/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/data/source_images/final")
 OUTPUT_DIR = Path("/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/data/identity_prompts")

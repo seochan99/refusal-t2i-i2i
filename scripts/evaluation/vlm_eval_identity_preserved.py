@@ -11,7 +11,7 @@ from google import genai
 from PIL import Image
 import time
 
-GEMINI_API_KEY = "AIzaSyCYNx5TMv-2cPsPIBdHCZ6PuG0c_HQXNxY"
+GEMINI_API_KEY = ""
 
 SOURCE_DIR = Path("/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/data/source_images/final")
 BASELINE_DIR = Path("/Users/chan/Downloads/t2i-bias-refusal-result-image/step1x_organized/by_category/D_vulnerability")
