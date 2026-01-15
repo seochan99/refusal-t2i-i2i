@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { db, S3_BUCKET_URL, COLLECTIONS } from '@/lib/firebase'
-import { collection, doc, setDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore'
-import { MODELS, CATEGORIES, RACES, GENDERS, AGES, type EvalItem, type ModelKey } from '@/lib/types'
+import { collection, doc, setDoc, getDocs, getDoc, query, where, serverTimestamp } from 'firebase/firestore'
+import { MODELS_EXP1, CATEGORIES, RACES, GENDERS, AGES, type EvalItem } from '@/lib/types'
 import { getPromptText } from '@/lib/prompts'
+
+type ModelKey = keyof typeof MODELS_EXP1
 
 function getCategoryFolder(category: string): string {
   const map: Record<string, string> = {
@@ -50,6 +52,13 @@ function generateEvalItems(model: string): EvalItem[] {
   return items
 }
 
+// Stored evaluation data structure
+interface StoredEvaluation {
+  q1_edit_applied: 'yes' | 'partial' | 'no'
+  q2_race_same: 'same' | 'different' | 'ambiguous'
+  q3_gender_same: 'same' | 'different' | 'ambiguous'
+}
+
 function Exp1Content() {
   const { user, loading, logout } = useAuth()
   const router = useRouter()
@@ -62,11 +71,15 @@ function Exp1Content() {
   const [items, setItems] = useState<EvalItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(urlIndex)
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
+  const [storedEvaluations, setStoredEvaluations] = useState<Map<string, StoredEvaluation>>(new Map())
   const [itemStartTime, setItemStartTime] = useState<number>(0)
 
   const [q1, setQ1] = useState<'yes' | 'partial' | 'no' | null>(null)
   const [q2, setQ2] = useState<'same' | 'different' | 'ambiguous' | null>(null)
   const [q3, setQ3] = useState<'same' | 'different' | 'ambiguous' | null>(null)
+
+  // Current active question (for sequential keyboard input)
+  const [activeQuestion, setActiveQuestion] = useState<1 | 2 | 3>(1)
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -83,7 +96,6 @@ function Exp1Content() {
       params.set('index', currentIndex.toString())
       router.replace(`/eval/exp1?${params.toString()}`, { scroll: false })
 
-      // Save to localStorage
       localStorage.setItem('exp1_progress', JSON.stringify({ model, index: currentIndex }))
     }
   }, [currentIndex, model, router])
@@ -93,21 +105,29 @@ function Exp1Content() {
     if (!user || !model) return
 
     const loadData = async () => {
-      // Generate items
       const modelItems = generateEvalItems(model)
       setItems(modelItems)
 
-      // Load completed evaluations
       try {
         const evalRef = collection(db, COLLECTIONS.EVALUATIONS)
         const q = query(evalRef, where('userId', '==', user.uid), where('model', '==', model))
         const snapshot = await getDocs(q)
 
         const completed = new Set<string>()
-        snapshot.forEach(doc => {
-          completed.add(doc.data().itemId)
+        const evaluations = new Map<string, StoredEvaluation>()
+
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data()
+          completed.add(data.itemId)
+          evaluations.set(data.itemId, {
+            q1_edit_applied: data.q1_edit_applied,
+            q2_race_same: data.q2_race_same,
+            q3_gender_same: data.q3_gender_same
+          })
         })
+
         setCompletedIds(completed)
+        setStoredEvaluations(evaluations)
       } catch (error) {
         console.error('Error loading evaluations:', error)
       }
@@ -118,14 +138,35 @@ function Exp1Content() {
 
   const currentItem = items[currentIndex]
 
-  // Reset answers when navigating
+  // Load existing answers when navigating to a completed item
   useEffect(() => {
     if (!currentItem) return
-    setQ1(null)
-    setQ2(null)
-    setQ3(null)
+
+    const stored = storedEvaluations.get(currentItem.id)
+    if (stored) {
+      setQ1(stored.q1_edit_applied)
+      setQ2(stored.q2_race_same)
+      setQ3(stored.q3_gender_same)
+      setActiveQuestion(3) // All answered, set to last
+    } else {
+      setQ1(null)
+      setQ2(null)
+      setQ3(null)
+      setActiveQuestion(1)
+    }
     setItemStartTime(Date.now())
-  }, [currentIndex, currentItem?.id])
+  }, [currentIndex, currentItem?.id, storedEvaluations])
+
+  // Update active question based on answers
+  useEffect(() => {
+    if (q1 === null) {
+      setActiveQuestion(1)
+    } else if (q2 === null) {
+      setActiveQuestion(2)
+    } else if (q3 === null) {
+      setActiveQuestion(3)
+    }
+  }, [q1, q2, q3])
 
   const saveEvaluation = useCallback(async () => {
     if (!currentItem || !user || q1 === null || q2 === null || q3 === null) return
@@ -155,7 +196,13 @@ function Exp1Content() {
     try {
       await setDoc(evalRef, evalData)
       setCompletedIds(prev => new Set(prev).add(currentItem.id))
+      setStoredEvaluations(prev => {
+        const newMap = new Map(prev)
+        newMap.set(currentItem.id, { q1_edit_applied: q1, q2_race_same: q2, q3_gender_same: q3 })
+        return newMap
+      })
 
+      // Find next incomplete item
       const nextIncomplete = items.findIndex(
         (it, idx) => idx > currentIndex && !completedIds.has(it.id) && it.id !== currentItem.id
       )
@@ -173,27 +220,46 @@ function Exp1Content() {
   // Auto-advance when all questions answered
   useEffect(() => {
     if (q1 !== null && q2 !== null && q3 !== null && currentItem) {
-      const timer = setTimeout(saveEvaluation, 150)
-      return () => clearTimeout(timer)
+      // Don't auto-save if this was loaded from storage (already saved)
+      const stored = storedEvaluations.get(currentItem.id)
+      if (!stored || stored.q1_edit_applied !== q1 || stored.q2_race_same !== q2 || stored.q3_gender_same !== q3) {
+        const timer = setTimeout(saveEvaluation, 150)
+        return () => clearTimeout(timer)
+      }
     }
-  }, [q1, q2, q3, currentItem, saveEvaluation])
+  }, [q1, q2, q3, currentItem, saveEvaluation, storedEvaluations])
 
-  // Keyboard handler
+  // Keyboard handler - Sequential 1,2,3 for current question
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Q1
-      if (e.key === '1') setQ1('yes')
-      else if (e.key === '2') setQ1('partial')
-      else if (e.key === '3') setQ1('no')
-      // Q2
-      else if (e.key === '4') setQ2('same')
-      else if (e.key === '5') setQ2('different')
-      else if (e.key === '6') setQ2('ambiguous')
-      // Q3
-      else if (e.key === '7') setQ3('same')
-      else if (e.key === '8') setQ3('different')
-      else if (e.key === '9') setQ3('ambiguous')
-      // Navigation
+      // 1, 2, 3 keys for current active question
+      if (e.key === '1' || e.key === '2' || e.key === '3') {
+        const keyNum = parseInt(e.key)
+
+        if (activeQuestion === 1) {
+          const values: ('yes' | 'partial' | 'no')[] = ['yes', 'partial', 'no']
+          setQ1(values[keyNum - 1])
+        } else if (activeQuestion === 2) {
+          const values: ('same' | 'different' | 'ambiguous')[] = ['same', 'different', 'ambiguous']
+          setQ2(values[keyNum - 1])
+        } else if (activeQuestion === 3) {
+          const values: ('same' | 'different' | 'ambiguous')[] = ['same', 'different', 'ambiguous']
+          setQ3(values[keyNum - 1])
+        }
+      }
+      // Arrow Up/Down to move between questions
+      else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (activeQuestion > 1) {
+          setActiveQuestion(prev => Math.max(1, prev - 1) as 1 | 2 | 3)
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (activeQuestion < 3 && (activeQuestion === 1 ? q1 !== null : q2 !== null)) {
+          setActiveQuestion(prev => Math.min(3, prev + 1) as 1 | 2 | 3)
+        }
+      }
+      // Left/Right for navigation
       else if (e.key === 'ArrowLeft' && currentIndex > 0) {
         setCurrentIndex(prev => prev - 1)
       } else if (e.key === 'ArrowRight' && currentIndex < items.length - 1) {
@@ -208,7 +274,7 @@ function Exp1Content() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentIndex, items, completedIds])
+  }, [currentIndex, items, completedIds, activeQuestion, q1, q2])
 
   if (loading || !user) {
     return (
@@ -218,7 +284,7 @@ function Exp1Content() {
     )
   }
 
-  if (!model || !MODELS[model as ModelKey]) {
+  if (!model || !MODELS_EXP1[model as ModelKey]) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="text-center">
@@ -232,25 +298,18 @@ function Exp1Content() {
   }
 
   // Redirect to completion page when all items are done
-  useEffect(() => {
-    if (items.length > 0 && completedIds.size === items.length) {
-      router.push(`/complete?exp=exp1&model=${model}&completed=${completedIds.size}`)
-    }
-  }, [items.length, completedIds.size, model, router])
+  if (items.length > 0 && completedIds.size === items.length) {
+    router.push(`/complete?exp=exp1&model=${model}&completed=${completedIds.size}`)
+    return null
+  }
 
   if (!currentItem) {
     return (
       <div className="min-h-screen flex items-center justify-center p-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="text-center panel-elevated p-12 max-w-lg">
           <h1 className="text-3xl font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            {completedIds.size === items.length ? 'Redirecting...' : 'Evaluation Complete'}
+            Loading Items...
           </h1>
-          <p className="text-base mb-8" style={{ color: 'var(--text-secondary)' }}>
-            Evaluated: <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{completedIds.size.toLocaleString()}</span> / {items.length.toLocaleString()}
-          </p>
-          <button onClick={() => router.push(`/complete?exp=exp1&model=${model}&completed=${completedIds.size}`)} className="btn btn-primary px-8 py-3 text-base font-semibold">
-            Get Completion Code
-          </button>
         </div>
       </div>
     )
@@ -262,34 +321,92 @@ function Exp1Content() {
   const progress = items.length > 0 ? (completedIds.size / items.length) * 100 : 0
   const isCurrentCompleted = completedIds.has(currentItem.id)
 
+  // Question component
+  const renderQuestion = (
+    qNum: 1 | 2 | 3,
+    title: string,
+    value: string | null,
+    setValue: (v: any) => void,
+    options: { key: string; label: string }[],
+    disabled: boolean
+  ) => {
+    const isActive = activeQuestion === qNum
+    const hasValue = value !== null
+
+    return (
+      <div
+        className={`mb-3 p-5 rounded-lg transition-all ${disabled ? 'opacity-40' : ''}`}
+        style={{
+          backgroundColor: isActive ? 'var(--bg-elevated)' : 'var(--bg-secondary)',
+          border: `2px solid ${isActive ? 'var(--accent-primary)' : hasValue ? 'var(--success-text)' : 'var(--border-default)'}`
+        }}
+        onClick={() => !disabled && setActiveQuestion(qNum)}
+      >
+        <h3 className="font-bold mb-4 flex items-center gap-3 text-sm" style={{ color: 'var(--text-primary)' }}>
+          <span
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+            style={{
+              backgroundColor: isActive ? 'var(--accent-primary)' : hasValue ? 'var(--success-text)' : 'var(--bg-tertiary)',
+              color: isActive || hasValue ? 'var(--bg-primary)' : 'var(--text-muted)'
+            }}
+          >
+            Q{qNum}
+          </span>
+          <span style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{title}</span>
+          {isActive && <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }}>ACTIVE</span>}
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {options.map((opt, idx) => (
+            <button
+              key={opt.key}
+              onClick={(e) => { e.stopPropagation(); !disabled && setValue(opt.key) }}
+              disabled={disabled}
+              className="py-4 rounded-lg font-semibold transition-all"
+              style={{
+                backgroundColor: value === opt.key ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+                borderWidth: '2px',
+                borderStyle: 'solid',
+                borderColor: value === opt.key ? 'var(--accent-primary)' : 'var(--border-default)',
+                color: value === opt.key ? 'var(--bg-primary)' : 'var(--text-primary)'
+              }}
+            >
+              <div className="text-xl mb-1">{idx + 1}</div>
+              <div className="text-xs">{opt.label}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div ref={containerRef} className="min-h-screen p-6 flex flex-col" style={{ backgroundColor: 'var(--bg-primary)' }} tabIndex={0}>
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
-          <span className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+          <span className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {currentIndex + 1} / {items.length.toLocaleString()}
           </span>
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>({completedIds.size.toLocaleString()} done)</span>
+          <span className="text-sm font-semibold" style={{ color: 'var(--accent-primary)' }}>({completedIds.size.toLocaleString()} completed)</span>
           {isCurrentCompleted && (
-            <span className="badge badge-strong text-xs">COMPLETED</span>
+            <span className="text-xs px-2 py-1 rounded font-bold" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>✓ SAVED</span>
           )}
         </div>
         <div className="flex items-center gap-4">
-          <span className="badge badge-default text-xs">Exp 1: VLM Scoring</span>
+          <span className="text-sm font-semibold px-3 py-1 rounded" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>Exp 1: VLM Scoring</span>
           <div className="flex items-center gap-2">
             {user?.photoURL && <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full" style={{ border: '1px solid var(--border-default)' }} />}
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{user?.displayName?.split(' ')[0]}</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{user?.displayName?.split(' ')[0]}</span>
           </div>
-          <button onClick={() => router.push('/select')} className="btn btn-ghost px-4 py-2 text-sm">
+          <button onClick={() => router.push('/select')} className="btn btn-ghost px-4 py-2 text-sm font-semibold">
             Exit
           </button>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="progress-bar h-1.5 mb-6">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
+      <div className="h-2 rounded-full mb-6 overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+        <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: 'var(--accent-primary)' }} />
       </div>
 
       {/* Main Content */}
@@ -298,23 +415,32 @@ function Exp1Content() {
         <div className="w-3/5 flex gap-5">
           <div className="flex-1 flex flex-col">
             <div className="text-center mb-3">
-              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>SOURCE</span>
+              <span className="text-xs font-bold tracking-wider" style={{ color: 'var(--text-primary)' }}>SOURCE</span>
               <div className="mt-1">
-                <span className="badge badge-default text-xs">{currentItem.race} / {currentItem.gender} / {currentItem.age}</span>
+                <span className="text-xs px-2 py-1 rounded font-semibold" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>
+                  {currentItem.race} / {currentItem.gender} / {currentItem.age}
+                </span>
               </div>
             </div>
-            <div className="flex-1 image-container flex items-center justify-center min-h-[400px]">
-              <img src={sourceUrl} alt="Source" className="max-w-full max-h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg' }} />
+            <div className="flex-1 rounded-lg flex items-center justify-center min-h-[400px] overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
+              <img
+                src={sourceUrl}
+                alt="Source"
+                className="max-w-full max-h-full object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
             </div>
           </div>
           <div className="flex-1 flex flex-col">
             <div className="text-center mb-3">
-              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)', letterSpacing: '0.05em' }}>OUTPUT</span>
+              <span className="text-xs font-bold tracking-wider" style={{ color: 'var(--text-primary)' }}>OUTPUT</span>
               <div className="mt-1">
-                <span className="badge badge-strong text-xs">{MODELS[currentItem.model as ModelKey]?.name}</span>
+                <span className="text-xs px-2 py-1 rounded font-bold" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }}>
+                  {MODELS_EXP1[currentItem.model as ModelKey]?.name}
+                </span>
               </div>
             </div>
-            <div className="flex-1 image-container flex items-center justify-center min-h-[400px]">
+            <div className="flex-1 rounded-lg flex items-center justify-center min-h-[400px] overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
               <img
                 src={`${baseOutputUrl}_success.png`}
                 alt="Output"
@@ -323,7 +449,7 @@ function Exp1Content() {
                   const img = e.target as HTMLImageElement
                   if (img.src.includes('_success.png')) img.src = `${baseOutputUrl}_unchanged.png`
                   else if (img.src.includes('_unchanged.png')) img.src = `${baseOutputUrl}_refusal.png`
-                  else img.src = '/placeholder.svg'
+                  else img.style.display = 'none'
                 }}
               />
             </div>
@@ -332,112 +458,77 @@ function Exp1Content() {
 
         {/* Questions */}
         <div className="w-2/5 flex flex-col">
-          {/* Prompt Display - PROMINENTLY SHOWN */}
-          <div className="mb-4 panel p-5" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+          {/* Prompt Display */}
+          <div className="mb-4 p-5 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
             <div className="flex items-center gap-2 mb-3">
-              <span className="badge badge-strong font-semibold">{currentItem.promptId}</span>
-              <span className="badge badge-default text-xs">{CATEGORIES[currentItem.category as keyof typeof CATEGORIES]?.name}</span>
+              <span className="text-sm font-bold px-2 py-1 rounded" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }}>{currentItem.promptId}</span>
+              <span className="text-xs font-semibold px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}>
+                {CATEGORIES[currentItem.category as keyof typeof CATEGORIES]?.name}
+              </span>
             </div>
-            <div className="text-sm leading-relaxed p-3 rounded" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}>
+            <div className="text-sm leading-relaxed p-3 rounded" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-default)' }}>
               <strong className="block mb-2" style={{ color: 'var(--accent-primary)' }}>Edit Prompt:</strong>
-              {getPromptText(currentItem.promptId)}
+              <span style={{ color: 'var(--text-primary)' }}>{getPromptText(currentItem.promptId)}</span>
             </div>
           </div>
 
-          {/* Q1 */}
-          <div className={`mb-3 p-5 panel transition-all ${q1 !== null ? '' : 'ring-1'}`} style={{ borderColor: q1 !== null ? 'var(--border-default)' : 'var(--accent-secondary)' }}>
-            <h3 className="font-semibold mb-4 flex items-center gap-3 text-sm" style={{ color: 'var(--text-primary)' }}>
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>Q1</span>
-              Was the edit applied?
-            </h3>
-            <div className="grid grid-cols-3 gap-2">
-              {(['yes', 'partial', 'no'] as const).map((val, idx) => (
-                <button
-                  key={val}
-                  onClick={() => setQ1(val)}
-                  className={`py-4 panel font-semibold transition-all ${q1 === val ? 'selected' : ''}`}
-                  style={{
-                    backgroundColor: q1 === val ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-                    borderColor: q1 === val ? 'var(--accent-primary)' : 'var(--border-default)',
-                    color: q1 === val ? 'var(--bg-primary)' : 'var(--text-primary)'
-                  }}
-                >
-                  <div className="text-xl mb-1">{idx + 1}</div>
-                  <div className="text-xs capitalize">{val}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+          {renderQuestion(
+            1,
+            'Was the edit applied?',
+            q1,
+            setQ1,
+            [{ key: 'yes', label: 'Yes' }, { key: 'partial', label: 'Partial' }, { key: 'no', label: 'No' }],
+            false
+          )}
 
-          {/* Q2 */}
-          <div className={`mb-3 p-5 panel transition-all ${q1 === null ? 'opacity-40' : q2 !== null ? '' : 'ring-1'}`} style={{ borderColor: q1 === null ? 'var(--border-default)' : q2 !== null ? 'var(--border-default)' : 'var(--accent-secondary)' }}>
-            <h3 className="font-semibold mb-4 flex items-center gap-3 text-sm" style={{ color: 'var(--text-primary)' }}>
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>Q2</span>
-              Race preserved?
-            </h3>
-            <div className="grid grid-cols-3 gap-2">
-              {(['same', 'different', 'ambiguous'] as const).map((val, idx) => (
-                <button
-                  key={val}
-                  onClick={() => q1 !== null && setQ2(val)}
-                  disabled={q1 === null}
-                  className={`py-4 panel font-semibold transition-all ${q2 === val ? 'selected' : ''}`}
-                  style={{
-                    backgroundColor: q2 === val ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-                    borderColor: q2 === val ? 'var(--accent-primary)' : 'var(--border-default)',
-                    color: q2 === val ? 'var(--bg-primary)' : 'var(--text-primary)'
-                  }}
-                >
-                  <div className="text-xl mb-1">{idx + 4}</div>
-                  <div className="text-xs capitalize">{val === 'ambiguous' ? 'Ambig' : val}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+          {renderQuestion(
+            2,
+            'Race preserved?',
+            q2,
+            setQ2,
+            [{ key: 'same', label: 'Same' }, { key: 'different', label: 'Different' }, { key: 'ambiguous', label: 'Ambig' }],
+            q1 === null
+          )}
 
-          {/* Q3 */}
-          <div className={`mb-3 p-5 panel transition-all ${q2 === null ? 'opacity-40' : q3 !== null ? '' : 'ring-1'}`} style={{ borderColor: q2 === null ? 'var(--border-default)' : q3 !== null ? 'var(--border-default)' : 'var(--accent-secondary)' }}>
-            <h3 className="font-semibold mb-4 flex items-center gap-3 text-sm" style={{ color: 'var(--text-primary)' }}>
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>Q3</span>
-              Gender preserved?
-            </h3>
-            <div className="grid grid-cols-3 gap-2">
-              {(['same', 'different', 'ambiguous'] as const).map((val, idx) => (
-                <button
-                  key={val}
-                  onClick={() => q2 !== null && setQ3(val)}
-                  disabled={q2 === null}
-                  className={`py-4 panel font-semibold transition-all ${q3 === val ? 'selected' : ''}`}
-                  style={{
-                    backgroundColor: q3 === val ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-                    borderColor: q3 === val ? 'var(--accent-primary)' : 'var(--border-default)',
-                    color: q3 === val ? 'var(--bg-primary)' : 'var(--text-primary)'
-                  }}
-                >
-                  <div className="text-xl mb-1">{idx + 7}</div>
-                  <div className="text-xs capitalize">{val === 'ambiguous' ? 'Ambig' : val}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+          {renderQuestion(
+            3,
+            'Gender preserved?',
+            q3,
+            setQ3,
+            [{ key: 'same', label: 'Same' }, { key: 'different', label: 'Different' }, { key: 'ambiguous', label: 'Ambig' }],
+            q2 === null
+          )}
 
-          {q1 !== null && q2 !== null && q3 !== null && (
-            <div className="text-center py-2.5 panel text-xs font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Saving & advancing...</div>
+          {q1 !== null && q2 !== null && q3 !== null && !isCurrentCompleted && (
+            <div className="text-center py-3 rounded-lg text-sm font-bold" style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }}>
+              Saving & advancing...
+            </div>
           )}
         </div>
       </div>
 
       {/* Bottom Bar */}
-      <div className="mt-6 flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
+      <div className="mt-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))} disabled={currentIndex === 0} className="btn btn-secondary px-4 py-2 text-xs">← Prev</button>
-          <button onClick={() => setCurrentIndex(prev => Math.min(items.length - 1, prev + 1))} disabled={currentIndex >= items.length - 1} className="btn btn-secondary px-4 py-2 text-xs">Next →</button>
-          <button onClick={() => { const next = items.findIndex((it, idx) => idx > currentIndex && !completedIds.has(it.id)); if (next >= 0) setCurrentIndex(next) }} className="btn btn-ghost px-4 py-2 text-xs">Next Incomplete (N)</button>
+          <button onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))} disabled={currentIndex === 0} className="btn btn-secondary px-4 py-2 text-sm font-semibold">← Prev</button>
+          <button onClick={() => setCurrentIndex(prev => Math.min(items.length - 1, prev + 1))} disabled={currentIndex >= items.length - 1} className="btn btn-secondary px-4 py-2 text-sm font-semibold">Next →</button>
+          <button onClick={() => { const next = items.findIndex((it, idx) => idx > currentIndex && !completedIds.has(it.id)); if (next >= 0) setCurrentIndex(next) }} className="btn btn-ghost px-4 py-2 text-sm">Next Incomplete (N)</button>
         </div>
-        <div className="flex items-center gap-4 text-xs">
-          <span>Q1: <kbd className="keyboard-hint">1</kbd><kbd className="keyboard-hint">2</kbd><kbd className="keyboard-hint">3</kbd></span>
-          <span>Q2: <kbd className="keyboard-hint">4</kbd><kbd className="keyboard-hint">5</kbd><kbd className="keyboard-hint">6</kbd></span>
-          <span>Q3: <kbd className="keyboard-hint">7</kbd><kbd className="keyboard-hint">8</kbd><kbd className="keyboard-hint">9</kbd></span>
+        <div className="flex items-center gap-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+          <span>
+            <kbd className="px-2 py-1 rounded text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>1</kbd>
+            <kbd className="px-2 py-1 rounded text-xs ml-1" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>2</kbd>
+            <kbd className="px-2 py-1 rounded text-xs ml-1" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>3</kbd>
+            <span className="ml-2">Answer</span>
+          </span>
+          <span>
+            <kbd className="px-2 py-1 rounded text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>↑↓</kbd>
+            <span className="ml-2">Switch Q</span>
+          </span>
+          <span>
+            <kbd className="px-2 py-1 rounded text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>←→</kbd>
+            <span className="ml-2">Navigate</span>
+          </span>
         </div>
       </div>
     </div>

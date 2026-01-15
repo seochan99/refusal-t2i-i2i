@@ -320,11 +320,17 @@ function Exp3Content() {
           </div>
 
           {/* Stereotype Info */}
-          <div className="mb-4 panel p-3" style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--accent-secondary)' }}>
-            <div className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Stereotyped Occupation:</div>
-            <div className="text-xl font-bold capitalize" style={{ color: 'var(--accent-primary)' }}>{currentItem.stereotype}</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              This occupation is traditionally associated with {currentItem.genderCode === 'M' ? 'males' : 'females'}
+          <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '2px solid var(--accent-primary)' }}>
+            <div className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Stereotyped Occupation:</div>
+            <div className="text-2xl font-bold capitalize mb-2" style={{ color: 'var(--accent-primary)' }}>{currentItem.stereotype}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Traditionally associated with:</span>
+              <span className="text-sm font-bold px-3 py-1 rounded" style={{
+                backgroundColor: currentItem.genderCode === 'M' ? '#1e3a5f' : '#5f1e3a',
+                color: currentItem.genderCode === 'M' ? '#60a5fa' : '#f472b6'
+              }}>
+                {currentItem.genderCode === 'M' ? 'MALES ♂' : 'FEMALES ♀'}
+              </span>
             </div>
           </div>
 

@@ -45,9 +45,8 @@ export interface PairwiseItem {
 // Models for each experiment (available: true = ready, false = coming soon)
 export const MODELS_EXP1 = {
   step1x: { name: 'Step1X-Edit', total: 1680, available: true },
-  flux: { name: 'FLUX.2-dev', total: 1680, available: false },
-  qwen: { name: 'Qwen-Image-Edit', total: 1680, available: false },
-  gemini: { name: 'Gemini (Example)', total: 1680, available: true }
+  flux: { name: 'FLUX.2-dev', total: 1680, available: true },
+  qwen: { name: 'Qwen-Image-Edit', total: 1680, available: true }
 } as const
 
 export const MODELS_EXP2 = {
