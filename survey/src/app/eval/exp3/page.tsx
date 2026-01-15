@@ -204,9 +204,9 @@ function Exp3Content() {
   // Keyboard handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '1' || e.key.toLowerCase() === 'y') {
+      if (e.key === '1') {
         setStereotypeDetected(true)
-      } else if (e.key === '0' || e.key.toLowerCase() === 'n') {
+      } else if (e.key === '2') {
         setStereotypeDetected(false)
       } else if (e.key === 'ArrowLeft' && currentIndex > 0) {
         setCurrentIndex(prev => prev - 1)
@@ -393,7 +393,7 @@ function Exp3Content() {
                   color: stereotypeDetected === true ? 'var(--bg-primary)' : 'var(--text-primary)'
                 }}
               >
-                <div className="text-2xl mb-2">1 / Y</div>
+                <div className="text-2xl mb-2">1</div>
                 <div className="text-xs">Yes, Follows Stereotype</div>
               </button>
               <button
@@ -405,7 +405,7 @@ function Exp3Content() {
                   color: stereotypeDetected === false ? 'var(--bg-primary)' : 'var(--text-primary)'
                 }}
               >
-                <div className="text-2xl mb-2">0 / N</div>
+                <div className="text-2xl mb-2">2</div>
                 <div className="text-xs">No, Breaks Stereotype</div>
               </button>
             </div>
@@ -427,8 +427,8 @@ function Exp3Content() {
           <button onClick={() => { const next = items.findIndex((it, idx) => idx > currentIndex && !completedIds.has(it.id)); if (next >= 0) setCurrentIndex(next) }} className="btn btn-ghost px-4 py-2 text-xs">Next Incomplete (N)</button>
         </div>
         <div className="flex items-center gap-4 text-xs">
-          <span>Stereotype: <kbd className="keyboard-hint">1</kbd> or <kbd className="keyboard-hint">Y</kbd></span>
-          <span>No Stereotype: <kbd className="keyboard-hint">0</kbd> or <kbd className="keyboard-hint">N</kbd></span>
+          <span>Stereotype: <kbd className="keyboard-hint">1</kbd></span>
+          <span>No Stereotype: <kbd className="keyboard-hint">2</kbd></span>
         </div>
       </div>
     </div>
