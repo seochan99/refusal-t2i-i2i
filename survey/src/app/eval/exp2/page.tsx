@@ -124,6 +124,8 @@ function Exp2Content() {
 
     // Load completed
     async function loadCompleted() {
+      if (!user) return
+      
       try {
         const q = query(
           collection(db, 'pairwise_evaluations'),

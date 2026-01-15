@@ -41,6 +41,8 @@ function CompletionContent() {
 
       // Get AMT worker ID and save completion
       async function saveCompletion() {
+        if (!user) return
+        
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid))
           if (userDoc.exists()) {
