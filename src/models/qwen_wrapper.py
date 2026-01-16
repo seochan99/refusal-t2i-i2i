@@ -33,9 +33,18 @@ class QwenImageEditWrapper(I2IModel):
     MODEL_ID = "Qwen/Qwen-Image-Edit-2511"
     MODEL_URL = "https://huggingface.co/Qwen/Qwen-Image-Edit-2511"
 
-    def __init__(self, device: str = "cuda"):
+    def __init__(
+        self,
+        device: str = "cuda",
+        enable_cpu_offload: bool = True,
+        enable_attention_slicing: bool = True,
+        enable_vae_slicing: bool = True
+    ):
         super().__init__(model_name="Qwen-Image-Edit-2511", device=device)
         self.pipe = None
+        self.enable_cpu_offload = enable_cpu_offload
+        self.enable_attention_slicing = enable_attention_slicing
+        self.enable_vae_slicing = enable_vae_slicing
 
     def load(self):
         """Load Qwen-Image-Edit-2511 model."""
@@ -50,7 +59,21 @@ class QwenImageEditWrapper(I2IModel):
                 self.MODEL_ID,
                 torch_dtype=torch.bfloat16
             )
-            self.pipe = self.pipe.to(self.device)
+
+            device_is_cuda = str(self.device).startswith("cuda")
+            if device_is_cuda and self.enable_cpu_offload:
+                # Reduce VRAM usage on 24GB cards.
+                if hasattr(self.pipe, "enable_sequential_cpu_offload"):
+                    self.pipe.enable_sequential_cpu_offload()
+                else:
+                    self.pipe.enable_model_cpu_offload()
+            else:
+                self.pipe = self.pipe.to(self.device)
+
+            if self.enable_attention_slicing and hasattr(self.pipe, "enable_attention_slicing"):
+                self.pipe.enable_attention_slicing()
+            if self.enable_vae_slicing and hasattr(self.pipe, "enable_vae_slicing"):
+                self.pipe.enable_vae_slicing()
             self.pipe.set_progress_bar_config(disable=None)
 
             self._loaded = True
