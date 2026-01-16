@@ -43,30 +43,16 @@ echo "  Experiment 2: Step1X-Edit Identity Preservation"
 echo "============================================================"
 echo -e "${NC}"
 
-RUN_EDITED=true
-RUN_PRESERVED=true
 RESUME_FROM=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --edited)
-            RUN_EDITED=true
-            RUN_PRESERVED=false
-            shift
-            ;;
-        --preserved)
-            RUN_EDITED=false
-            RUN_PRESERVED=true
-            shift
-            ;;
         --resume)
             RESUME_FROM="$2"
             shift 2
             ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
-            echo "  --edited       Only edited condition"
-            echo "  --preserved    Only preserved condition"
             echo "  --resume N     Resume from task index N"
             exit 0
             ;;
@@ -107,23 +93,12 @@ EXPERIMENT_ID=$(date +"%Y%m%d_%H%M%S")
 echo -e "${BLUE}Experiment ID: $EXPERIMENT_ID${NC}"
 echo ""
 
-if [ "$RUN_EDITED" = true ]; then
-    echo -e "${GREEN}▶ Running EDITED condition${NC}"
-    cd "$PROJECT_ROOT"
-    python scripts/experiment/exp2_preservation/run_preservation_experiment.py \
-        --model "$MODEL" --device "$DEVICE" --condition edited \
-        --experiment-id "${EXPERIMENT_ID}_edited" --resume-from "$RESUME_FROM"
-    echo ""
-fi
-
-if [ "$RUN_PRESERVED" = true ]; then
-    echo -e "${GREEN}▶ Running PRESERVED condition${NC}"
-    cd "$PROJECT_ROOT"
-    python scripts/experiment/exp2_preservation/run_preservation_experiment.py \
-        --model "$MODEL" --device "$DEVICE" --condition preserved \
-        --experiment-id "${EXPERIMENT_ID}_preserved" --resume-from "$RESUME_FROM"
-    echo ""
-fi
+echo -e "${GREEN}▶ Running PRESERVED condition (with identity prompts)${NC}"
+cd "$PROJECT_ROOT"
+python scripts/experiment/exp2_preservation/run_preservation_experiment.py \
+    --model "$MODEL" --device "$DEVICE" \
+    --experiment-id "${EXPERIMENT_ID}" --resume-from "$RESUME_FROM"
+echo ""
 
 echo -e "${GREEN}============================================================"
 echo "  Step1X-Edit Complete!"

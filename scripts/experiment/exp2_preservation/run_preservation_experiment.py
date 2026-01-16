@@ -9,7 +9,7 @@ Selected Prompts (from team annotation intersection analysis):
 - B09: Fashion Model → Race + Identity change
 - D03: 30 years older → Over-aging + Race change
 
-Scale: 4 prompts × 84 images × 3 models = 1,008 total images (edited condition)
+Scale: 4 prompts × 84 images × 3 models = 1,008 total images (preserved condition)
 
 Usage:
     python scripts/experiment/exp2_preservation/run_preservation_experiment.py --model step1x --device cuda
@@ -105,11 +105,11 @@ def run_preservation_experiment(
     experiment_id: Optional[str] = None,
     resume_from: int = 0,
     output_dir: Optional[Path] = None,
-    condition: str = "edited",  # "edited" (with identity prompt) or "preserved" (baseline)
     gender_filter: Optional[str] = None  # "Female" or "Male" for GPU split
 ):
     """
     Run Experiment 2: Identity Preservation evaluation.
+    Generates images with identity preservation prompts appended.
 
     Args:
         model_name: Model to test (step1x, flux, qwen)
@@ -117,7 +117,6 @@ def run_preservation_experiment(
         experiment_id: Unique experiment identifier
         resume_from: Request index to resume from
         output_dir: Override output directory
-        condition: "edited" = with identity preservation prompt, "preserved" = baseline (original prompt only)
         gender_filter: "Female" or "Male" to filter images (for GPU split)
     """
     # Setup paths
@@ -134,7 +133,7 @@ def run_preservation_experiment(
 
     # Output directory
     if output_dir is None:
-        output_dir = PROJECT_ROOT / "data" / "results" / "exp2_pairwise" / model_name / condition
+        output_dir = PROJECT_ROOT / "data" / "results" / "exp2_pairwise" / model_name / "preserved"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if experiment_id is None:
@@ -145,7 +144,7 @@ def run_preservation_experiment(
     print("=" * 80)
     print(f"Model: {model_name}")
     print(f"Device: {device}")
-    print(f"Condition: {condition}")
+    print(f"Condition: preserved (with identity prompts)")
     print(f"Experiment ID: {experiment_id}")
     print(f"Output: {output_dir}")
     print(f"Prompts: {list(EXP2_PROMPTS.keys())}")
@@ -153,11 +152,9 @@ def run_preservation_experiment(
         print(f"Gender Filter: {gender_filter}")
     print("=" * 80)
 
-    # Load identity prompts (only needed for "edited" condition)
-    identity_prompts = {}
-    if condition == "edited":
-        identity_prompts = load_identity_prompts(identity_prompts_file)
-        print(f"✓ Loaded {len(identity_prompts)} identity prompts from {identity_prompts_file.name}")
+    # Load identity prompts
+    identity_prompts = load_identity_prompts(identity_prompts_file)
+    print(f"✓ Loaded {len(identity_prompts)} identity prompts from {identity_prompts_file.name}")
 
     # Build task list: 4 prompts × 84 images = 336 tasks (or 168 if gender filtered)
     tasks = []
@@ -194,7 +191,7 @@ def run_preservation_experiment(
 
     # Run experiment
     results = []
-    pbar = tqdm(total=total_tasks, desc=f"{model_name} ({condition})", initial=resume_from)
+    pbar = tqdm(total=total_tasks, desc=f"{model_name} (preserved)", initial=resume_from)
 
     try:
         for idx, task in enumerate(tasks):
@@ -205,8 +202,8 @@ def run_preservation_experiment(
             image_key = task["image_key"]
             base_prompt = task["prompt_text"]
 
-            # Build final prompt
-            if condition == "edited" and image_key in identity_prompts:
+            # Build final prompt with identity preservation suffix
+            if image_key in identity_prompts:
                 identity_suffix = identity_prompts[image_key]
                 final_prompt = f"{base_prompt}. {identity_suffix}"
             else:
@@ -239,7 +236,7 @@ def run_preservation_experiment(
                         "category": task["category"],
                         "hypothesis": task["hypothesis"],
                         "failure_mode": task["failure_mode"],
-                        "condition": condition,
+                        "condition": "preserved",
                         "status": "success",
                         "output_path": str(output_path),
                         "latency_ms": result.latency_ms,
@@ -254,7 +251,7 @@ def run_preservation_experiment(
                         "gender": task["gender"],
                         "age": task["age"],
                         "category": task["category"],
-                        "condition": condition,
+                        "condition": "preserved",
                         "status": "failed",
                         "error": result.error_message or "Unknown error",
                         "timestamp": datetime.now().isoformat()
@@ -269,7 +266,7 @@ def run_preservation_experiment(
                     "gender": task["gender"],
                     "age": task["age"],
                     "category": task["category"],
-                    "condition": condition,
+                    "condition": "preserved",
                     "status": "error",
                     "error": str(e)[:200],
                     "timestamp": datetime.now().isoformat()
@@ -296,7 +293,7 @@ def run_preservation_experiment(
             json.dump({
                 "experiment_id": experiment_id,
                 "model": model_name,
-                "condition": condition,
+                "condition": "preserved",
                 "total_tasks": total_tasks,
                 "completed": len(results),
                 "success": sum(1 for r in results if r["status"] == "success"),
@@ -329,9 +326,6 @@ def main():
                        help="Model to evaluate")
     parser.add_argument("--device", type=str, default="cuda",
                        help="Compute device (cuda/cpu/mps)")
-    parser.add_argument("--condition", type=str, default="edited",
-                       choices=["edited", "preserved"],
-                       help="Experiment condition: edited (with identity prompt) or preserved (baseline)")
     parser.add_argument("--experiment-id", type=str, default=None,
                        help="Unique experiment identifier")
     parser.add_argument("--resume-from", type=int, default=0,
@@ -352,7 +346,6 @@ def main():
         experiment_id=args.experiment_id,
         resume_from=args.resume_from,
         output_dir=output_dir,
-        condition=args.condition,
         gender_filter=args.gender
     )
 
