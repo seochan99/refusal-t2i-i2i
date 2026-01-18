@@ -2,12 +2,13 @@
 """
 Experiment 2-2: Identity Preservation Evaluation (Remaining Prompts)
 Tests all prompts EXCEPT B01, B05, B09, D03 (which were already done in exp2-1)
+Uses AMT-sampled source images (83 unique images from balanced sampling)
 
 Remaining Prompts: 16 prompts
 - B: B02, B03, B04, B06, B07, B08, B10 (7 prompts)
 - D: D01, D02, D04, D05, D06, D07, D08, D09, D10 (9 prompts)
 
-Scale: 16 prompts × 84 images × 3 models = 4,032 total images (preserved condition)
+Scale: 16 prompts × 83 sampled images × 3 models = 3,984 total images (preserved condition)
 
 Usage:
     python scripts/experiment/exp2_preservation/dexp2-2_all\(exclude_B01,B05,B09,D03\)/run_preservation_experiment.py --model step1x --device cuda
@@ -27,13 +28,16 @@ import os
 import sys
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Tuple
 
 from PIL import Image
 from tqdm import tqdm
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# AMT Sampled images path
+AMT_SAMPLED_FILE = PROJECT_ROOT / "data" / "amt_sampling" / "exp1_amt_sampled.json"
 
 # Experiment 2-2: All prompts EXCEPT B01, B05, B09, D03
 EXP2_PROMPTS = {
@@ -121,10 +125,30 @@ EXP2_PROMPTS = {
     }
 }
 
-# Demographic configuration
+# Demographic configuration (fallback)
 RACES = ["Black", "EastAsian", "Indian", "Latino", "MiddleEastern", "SoutheastAsian", "White"]
 GENDERS = ["Female", "Male"]
 AGES = ["20s", "30s", "40s", "50s", "60s", "70plus"]
+
+
+def load_sampled_source_images() -> List[Tuple[str, str, str]]:
+    """Load unique source images (race, gender, age) from AMT sampling."""
+    if not AMT_SAMPLED_FILE.exists():
+        print(f"ERROR: AMT sampled file not found: {AMT_SAMPLED_FILE}")
+        print("Please run AMT sampling first!")
+        sys.exit(1)
+
+    with open(AMT_SAMPLED_FILE, "r") as f:
+        data = json.load(f)
+
+    # Extract unique (race, gender, age) combinations
+    unique_sources = set()
+    for item in data["items"]:
+        key = (item["race"], item["gender"], item["age"])
+        unique_sources.add(key)
+
+    print(f"Loaded {len(unique_sources)} unique source images from AMT sampling")
+    return list(unique_sources)
 
 
 def load_identity_prompts(identity_prompts_file: Path) -> dict:
@@ -210,31 +234,36 @@ def run_preservation_experiment(
     identity_prompts = load_identity_prompts(identity_prompts_file)
     print(f"Loaded {len(identity_prompts)} identity prompts from {identity_prompts_file.name}")
 
-    # Build task list: 16 prompts × 84 images = 1,344 tasks (or 672 if gender filtered)
-    tasks = []
-    genders_to_process = [gender_filter] if gender_filter else GENDERS
-    for prompt_id, prompt_data in EXP2_PROMPTS.items():
-        for race in RACES:
-            for gender in genders_to_process:
-                for age in AGES:
-                    image_key = f"{race}_{gender}_{age}"
-                    source_path = source_dir / race / f"{image_key}.jpg"
+    # Load sampled source images from AMT sampling
+    sampled_sources = load_sampled_source_images()
 
-                    if source_path.exists():
-                        tasks.append({
-                            "prompt_id": prompt_id,
-                            "prompt_text": prompt_data["prompt"],
-                            "category": prompt_data["category"],
-                            "hypothesis": prompt_data["hypothesis"],
-                            "image_key": image_key,
-                            "race": race,
-                            "gender": gender,
-                            "age": age,
-                            "source_path": str(source_path)
-                        })
+    # Build task list: 16 prompts × sampled images (~83)
+    tasks = []
+    for prompt_id, prompt_data in EXP2_PROMPTS.items():
+        for race, gender, age in sampled_sources:
+            # Apply gender filter if specified
+            if gender_filter and gender != gender_filter:
+                continue
+
+            image_key = f"{race}_{gender}_{age}"
+            source_path = source_dir / race / f"{image_key}.jpg"
+
+            if source_path.exists():
+                tasks.append({
+                    "prompt_id": prompt_id,
+                    "prompt_text": prompt_data["prompt"],
+                    "category": prompt_data["category"],
+                    "hypothesis": prompt_data["hypothesis"],
+                    "image_key": image_key,
+                    "race": race,
+                    "gender": gender,
+                    "age": age,
+                    "source_path": str(source_path)
+                })
 
     total_tasks = len(tasks)
-    print(f"Total tasks: {total_tasks} ({len(EXP2_PROMPTS)} prompts × {len(RACES)} races × {len(genders_to_process)} genders × {len(AGES)} ages)")
+    n_sources = len([s for s in sampled_sources if not gender_filter or s[1] == gender_filter])
+    print(f"Total tasks: {total_tasks} ({len(EXP2_PROMPTS)} prompts × {n_sources} sampled sources)")
 
     # Initialize model
     print(f"\nLoading {model_name} model...")
