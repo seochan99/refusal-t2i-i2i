@@ -19,6 +19,10 @@ Usage:
     python run_preservation_experiment.py --model step1x --device cuda
 """
 
+import os
+os.environ["HF_HOME"] = "/scratch/chans/models/huggingface"
+os.environ["HF_HUB_CACHE"] = "/scratch/chans/models/huggingface/hub"
+
 import argparse
 import json
 import sys

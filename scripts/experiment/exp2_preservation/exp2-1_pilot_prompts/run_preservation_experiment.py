@@ -23,16 +23,16 @@ Usage:
     python scripts/experiment/exp2_preservation/run_preservation_experiment.py --model step1x --resume-from 100
 """
 
+import os
+os.environ["HF_HOME"] = "/scratch/chans/models/huggingface"
+os.environ["HF_HUB_CACHE"] = "/scratch/chans/models/huggingface/hub"
+
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-
-# HuggingFace cache path - set via environment variable or shell script
-# Example: export HF_HOME="/scratch/username/models/huggingface"
 
 from PIL import Image
 from tqdm import tqdm
