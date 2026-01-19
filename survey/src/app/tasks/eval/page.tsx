@@ -42,10 +42,29 @@ async function loadAmtItems(taskId: number): Promise<AmtItem[]> {
       throw new Error(`Failed to load amt_items.json: ${response.status}`)
     }
     const data = await response.json()
-    console.log('Loaded JSON data:', { totalItems: data.items?.length })
-
-    const taskItems = data.items.filter((item: AmtItem) => item.taskId === taskId)
-    console.log(`Task ${taskId}: ${taskItems.length} items`)
+    
+    // Convert taskId number to string format (e.g., 1 -> "T01")
+    const taskIdStr = `T${taskId.toString().padStart(2, '0')}`
+    console.log('Looking for task:', taskIdStr)
+    
+    // Find the task in the tasks array
+    const task = data.tasks?.find((t: any) => t.taskId === taskIdStr)
+    
+    if (!task || !task.items) {
+      console.error(`Task ${taskIdStr} not found or has no items`)
+      return []
+    }
+    
+    // Map items to include taskId and required fields for compatibility
+    const taskItems = task.items.map((item: any) => ({
+      ...item,
+      taskId: taskId,
+      originalId: item.id, // Use id as originalId if not provided
+      editedImageUrl: item.editedImageUrl || item.outputImageUrl || '',
+      preservedImageUrl: item.preservedImageUrl || item.outputImageUrl || ''
+    }))
+    
+    console.log(`Task ${taskIdStr}: ${taskItems.length} items loaded`)
 
     return taskItems
   } catch (error) {
