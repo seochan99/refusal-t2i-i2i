@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { db, COLLECTIONS } from '@/lib/firebase'
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore'
 import { MODELS_EXP1, MODELS_EXP2, MODELS_EXP3 } from '@/lib/types'
+import { readProlificSession } from '@/lib/prolific'
 
 const EXPERIMENT_TYPES = {
   exp1: {
@@ -16,23 +17,29 @@ const EXPERIMENT_TYPES = {
     models: MODELS_EXP1
   },
   exp2: {
-    name: 'Experiment 2: Pairwise A/B',
-    desc: 'Compare edited vs identity-preserved images',
-    categories: 'Soft Erasure Detection',
+    name: 'Experiment 2: Pairwise Comparison',
+    desc: 'Compare edited vs identity-preserved: rate both',
+    categories: 'Source + Edited + Preserved',
     route: '/eval/exp2',
     models: MODELS_EXP2
-  },
-  exp3: {
-    name: 'Experiment 3: WinoBias',
-    desc: 'Binary stereotype detection',
-    categories: 'Gender-Occupation Prompts',
-    route: '/eval/exp3',
-    models: MODELS_EXP3
   }
+  // exp3 temporarily disabled - uncomment when needed
+  // exp3: {
+  //   name: 'Experiment 3: WinoBias',
+  //   desc: 'Binary stereotype detection',
+  //   categories: 'Gender-Occupation Prompts',
+  //   route: '/eval/exp3',
+  //   models: MODELS_EXP3
+  // }
 }
 
 interface ProgressData {
   [key: string]: number
+}
+
+interface IrbConsentInfo {
+  consented: boolean
+  consentedAt: Date | null
 }
 
 export default function SelectPage() {
@@ -40,10 +47,14 @@ export default function SelectPage() {
   const router = useRouter()
   const [experimentType, setExperimentType] = useState<string>('')
   const [selectedModel, setSelectedModel] = useState<string>('')
-  const [amtWorkerId, setAmtWorkerId] = useState<string | null>(null)
+  const [prolificPid, setProlificPid] = useState<string | null>(null)
   const [checkingAmt, setCheckingAmt] = useState(true)
   const [progress, setProgress] = useState<ProgressData>({})
   const [loadingProgress, setLoadingProgress] = useState(true)
+  const [irbConsent, setIrbConsent] = useState<IrbConsentInfo>({ consented: false, consentedAt: null })
+  const [showIrbModal, setShowIrbModal] = useState(false)
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false)
+  const [isWithdrawing, setIsWithdrawing] = useState(false)
 
   // Redirect to login if not authenticated (check first)
   useEffect(() => {
@@ -55,57 +66,65 @@ export default function SelectPage() {
     }
   }, [user, loading, router])
 
-  // Check consent (only if authenticated)
+  // Check consent and load AMT info (combined for efficiency)
   useEffect(() => {
-    if (loading || !user) return
-    
-    const consent = localStorage.getItem('irb_consent_i2i_bias')
-    if (consent !== 'agreed' && window.location.pathname === '/select') {
-      router.push('/consent')
-      return
-    }
-  }, [user, loading, router])
-
-  // Check AMT info (only if authenticated and consented)
-  useEffect(() => {
-    async function checkAMT() {
+    async function checkConsentAndLoadAMT() {
       if (!user || loading) {
-        setCheckingAmt(false)
-        return
-      }
-
-      const consent = localStorage.getItem('irb_consent_i2i_bias')
-      if (consent !== 'agreed') {
         setCheckingAmt(false)
         return
       }
 
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid))
+
         if (userDoc.exists()) {
           const data = userDoc.data()
-          if (!data.createdAt) {
-            if (window.location.pathname === '/select') {
-              router.push('/amt')
+
+          // Check consent (Firebase is authoritative)
+          if (data.irbConsent !== true) {
+            // Also check localStorage as fallback
+            const localConsent = localStorage.getItem('irb_consent_i2i_bias')
+            if (localConsent !== 'agreed' && window.location.pathname === '/select') {
+              router.push('/consent')
+              return
             }
+          } else {
+            // Sync to localStorage
+            localStorage.setItem('irb_consent_i2i_bias', 'agreed')
+          }
+
+          // Load IRB consent info
+          setIrbConsent({
+            consented: data.irbConsent === true,
+            consentedAt: data.irbConsentAt?.toDate() || null
+          })
+
+          // Load Prolific PID if it exists (optional)
+          setProlificPid(data.prolificPid || null)
+        } else {
+          // No user doc - check localStorage consent
+          const localConsent = localStorage.getItem('irb_consent_i2i_bias')
+          if (localConsent !== 'agreed' && window.location.pathname === '/select') {
+            router.push('/consent')
             return
           }
-          setAmtWorkerId(data.amtWorkerId || null)
-        } else {
-          if (window.location.pathname === '/select') {
-            router.push('/amt')
-          }
-          return
         }
       } catch (err) {
-        console.error('Error checking AMT:', err)
-        const localWorkerId = localStorage.getItem('amt_worker_id')
-        setAmtWorkerId(localWorkerId || null)
+        console.error('Error checking consent/AMT:', err)
+        // Fallback to localStorage
+        const localConsent = localStorage.getItem('irb_consent_i2i_bias')
+        if (localConsent !== 'agreed' && window.location.pathname === '/select') {
+          router.push('/consent')
+          return
+        }
+        const session = readProlificSession()
+        setProlificPid(session?.prolificPid || null)
       }
+
       setCheckingAmt(false)
     }
 
-    checkAMT()
+    checkConsentAndLoadAMT()
   }, [user, loading, router])
 
   // Load progress for all experiments
@@ -205,6 +224,37 @@ export default function SelectPage() {
     return { completed: totalCompleted, total: totalItems, percent: totalItems > 0 ? Math.round((totalCompleted / totalItems) * 100) : 0 }
   }
 
+  // Handle withdrawing IRB consent
+  const handleWithdrawConsent = async () => {
+    if (!user) return
+
+    setIsWithdrawing(true)
+    try {
+      // Update Firebase to withdraw consent
+      await setDoc(doc(db, 'users', user.uid), {
+        irbConsent: false,
+        irbWithdrawnAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true })
+
+      // Clear localStorage
+      localStorage.removeItem('irb_consent_i2i_bias')
+
+      // Update local state
+      setIrbConsent({ consented: false, consentedAt: null })
+      setShowWithdrawConfirm(false)
+      setShowIrbModal(false)
+
+      // Redirect to consent page
+      router.push('/consent')
+    } catch (err) {
+      console.error('Error withdrawing consent:', err)
+      alert('Failed to withdraw consent. Please try again.')
+    } finally {
+      setIsWithdrawing(false)
+    }
+  }
+
   if (loading || !user || checkingAmt) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
@@ -230,13 +280,61 @@ export default function SelectPage() {
             )}
             <div className="text-right">
               <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{user.displayName}</div>
-              {amtWorkerId && (
-                <div className="text-xs" style={{ color: 'var(--accent-primary)' }}>Worker: {amtWorkerId}</div>
+              {prolificPid ? (
+                <button
+                  onClick={() => router.push('/tasks')}
+                  className="text-xs transition-colors hover:underline"
+                  style={{ color: 'var(--accent-primary)' }}
+                  title="Click to edit Prolific info"
+                >
+                  Prolific: {prolificPid}
+                </button>
+              ) : (
+                <button
+                  onClick={() => router.push('/tasks')}
+                  className="text-xs transition-colors hover:underline"
+                  style={{ color: 'var(--text-muted)' }}
+                  title="Click to add Prolific PID"
+                >
+                  + Add Prolific ID
+                </button>
               )}
-              <button onClick={logout} className="text-xs transition-colors hover:underline" style={{ color: 'var(--text-muted)' }}>
+              <button onClick={logout} className="text-xs transition-colors hover:underline block mt-0.5" style={{ color: 'var(--text-muted)' }}>
                 Sign out
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* IRB Consent Status */}
+        <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-default)' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: irbConsent.consented ? 'var(--success-bg)' : 'var(--warning-bg)' }}>
+                {irbConsent.consented ? (
+                  <span style={{ color: 'var(--success-text)' }}>✓</span>
+                ) : (
+                  <span style={{ color: 'var(--warning-text)' }}>!</span>
+                )}
+              </div>
+              <div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  IRB Consent: {irbConsent.consented ? 'Agreed' : 'Not Agreed'}
+                </div>
+                {irbConsent.consentedAt && (
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Agreed on {irbConsent.consentedAt.toLocaleDateString()} at {irbConsent.consentedAt.toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setShowIrbModal(true)}
+              className="text-xs px-3 py-1.5 rounded transition-colors hover:opacity-80"
+              style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
+            >
+              View Details
+            </button>
           </div>
         </div>
 
@@ -416,6 +514,174 @@ export default function SelectPage() {
           </div>
         )}
       </div>
+
+      {/* IRB Consent Modal */}
+      {showIrbModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+          <div className="max-w-2xl w-full max-h-[80vh] overflow-auto rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <div className="sticky top-0 p-4 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-default)' }}>
+              <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>IRB Consent Information</h2>
+              <button
+                onClick={() => setShowIrbModal(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80"
+                style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              {/* Consent Status */}
+              <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: irbConsent.consented ? 'var(--success-bg)' : 'var(--warning-bg)' }}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{irbConsent.consented ? '✓' : '!'}</span>
+                  <div>
+                    <div className="font-bold" style={{ color: irbConsent.consented ? 'var(--success-text)' : 'var(--warning-text)' }}>
+                      {irbConsent.consented ? 'Consent Provided' : 'Consent Not Provided'}
+                    </div>
+                    {irbConsent.consentedAt && (
+                      <div className="text-sm" style={{ color: irbConsent.consented ? 'var(--success-text)' : 'var(--warning-text)' }}>
+                        {irbConsent.consentedAt.toLocaleDateString()} at {irbConsent.consentedAt.toLocaleTimeString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Study Information */}
+              <div className="space-y-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <div className="panel p-3" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                  <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                    <strong>IRB Protocol:</strong> STUDY2022_00000005<br/>
+                    <strong>Exempt Category:</strong> Category 2 &amp; 3
+                  </p>
+                  <div className="text-xs space-y-1" style={{ color: 'var(--text-disabled)' }}>
+                    <p><strong>Cat 2:</strong> Surveys/interviews of adults with anonymous data collection</p>
+                    <p><strong>Cat 3:</strong> Benign behavioral interventions with prospective consent</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Study Title</h3>
+                  <p>Evaluation of AI generated behaviors and artifacts</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Principal Investigator</h3>
+                  <p>Jean Oh, Carnegie Mellon University</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Research Group</h3>
+                  <p>Bot Intelligence Group at Carnegie Mellon University</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Purpose</h3>
+                  <p>To get human evaluation on the quality of AI generated artifacts. The research questions include whether the quality of output by one algorithm is better than another, and to understand ways to evaluate bias in AI-generated images.</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>What You Agreed To</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Viewing and evaluating AI-generated images</li>
+                    <li>Text and Image Alignment evaluation</li>
+                    <li>Identity Preservation assessment</li>
+                    <li>Stereotype Detection tasks</li>
+                    <li>Your responses being used for research purposes</li>
+                    <li>Anonymous data collection (no identifying information stored)</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Confidentiality</h3>
+                  <p>Your Prolific Participant ID (if applicable) will be used only for payment distribution and will not be stored with your survey responses. The ID information will be removed from the data and deleted completely.</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Your Rights</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Participation is voluntary</li>
+                    <li>You may stop at any time without penalty</li>
+                    <li>Your data will be kept confidential</li>
+                    <li>You may contact the research team with questions</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Contact</h3>
+                  <p>For questions about this study, contact: <span style={{ color: 'var(--accent-primary)' }}>chans@andrew.cmu.edu</span></p>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 space-y-3" style={{ borderTop: '1px solid var(--border-default)' }}>
+                {irbConsent.consented ? (
+                  <>
+                    {/* Withdraw Consent Confirmation */}
+                    {showWithdrawConfirm ? (
+                      <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--error-bg)', border: '1px solid var(--error-text)' }}>
+                        <p className="text-sm mb-3" style={{ color: 'var(--error-text)' }}>
+                          <strong>Are you sure you want to withdraw your consent?</strong><br/>
+                          You will need to re-consent before continuing with the evaluation.
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleWithdrawConsent}
+                            disabled={isWithdrawing}
+                            className="flex-1 py-2 rounded-lg font-semibold text-sm"
+                            style={{ backgroundColor: 'var(--error-text)', color: 'white' }}
+                          >
+                            {isWithdrawing ? 'Withdrawing...' : 'Yes, Withdraw'}
+                          </button>
+                          <button
+                            onClick={() => setShowWithdrawConfirm(false)}
+                            disabled={isWithdrawing}
+                            className="flex-1 py-2 rounded-lg font-semibold text-sm"
+                            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowWithdrawConfirm(true)}
+                        className="w-full py-3 rounded-lg font-semibold text-sm"
+                        style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)', border: '1px solid var(--border-default)' }}
+                      >
+                        Withdraw Consent
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setShowIrbModal(false); setShowWithdrawConfirm(false); }}
+                      className="w-full py-3 rounded-lg font-semibold"
+                      style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }}
+                    >
+                      Close
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => router.push('/consent')}
+                      className="w-full py-3 rounded-lg font-semibold"
+                      style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }}
+                    >
+                      Go to Consent Page
+                    </button>
+                    <button
+                      onClick={() => setShowIrbModal(false)}
+                      className="w-full py-3 rounded-lg font-semibold"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
+                    >
+                      Close
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

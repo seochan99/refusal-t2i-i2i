@@ -31,5 +31,26 @@ service cloud.firestore {
       allow write: if request.auth != null
         && request.auth.uid == request.resource.data.userId;
     }
+
+    // AMT Unified evaluations
+    match /amt_evaluations/{evalId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+    }
+
+    // AMT Task completions (track who completed each task)
+    match /amt_task_completions/{completionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+    }
+
+    // AMT Task activity (participation tracking)
+    match /amt_task_activity/{activityId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+    }
   }
 }

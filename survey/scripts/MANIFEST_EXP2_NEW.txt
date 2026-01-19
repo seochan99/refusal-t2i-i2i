@@ -1,0 +1,74 @@
+EXP2 ITEMS NEW - FILE MANIFEST
+Generated: January 18, 2026
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OUTPUT DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ survey/public/data/exp2_items_new.json
+  Size: 101 KB
+  Items: 200
+  Description: Generated Exp2 items with preserved images
+
+SCRIPTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ survey/scripts/generate_exp2_items_new.py
+  Size: 4.0 KB
+  Executable: Yes
+  Purpose: Generate exp2_items_new.json from AMT sampling data
+
+✓ survey/scripts/verify_exp2_items.py
+  Size: 6.7 KB
+  Executable: Yes
+  Purpose: Verify integrity of exp2_items_new.json
+
+DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ survey/scripts/INDEX_EXP2_NEW.md
+  Size: 6.7 KB
+  Purpose: Master index and navigation guide
+
+✓ survey/scripts/QUICK_START_EXP2.md
+  Size: 4.0 KB
+  Purpose: Quick reference and common commands
+
+✓ survey/scripts/EXP2_GENERATION_SUMMARY.md
+  Size: 4.6 KB
+  Purpose: Detailed generation statistics
+
+✓ survey/scripts/EXP2_ITEMS_NEW_README.md
+  Size: 4.6 KB
+  Purpose: Comprehensive documentation
+
+✓ survey/scripts/EXP2_FILE_STRUCTURE.txt
+  Size: 4.5 KB
+  Purpose: File locations and structure reference
+
+✓ survey/scripts/MANIFEST_EXP2_NEW.txt
+  Size: 2.5 KB (this file)
+  Purpose: List of all created files
+
+TOTAL FILES CREATED: 8
+TOTAL SIZE: ~138 KB
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+USAGE PATHS (relative to project root)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Data Output:
+/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/public/data/exp2_items_new.json
+
+Scripts:
+/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/generate_exp2_items_new.py
+/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/verify_exp2_items.py
+
+Documentation:
+/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/INDEX_EXP2_NEW.md
+/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/QUICK_START_EXP2.md
+/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/EXP2_GENERATION_SUMMARY.md
+/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/EXP2_ITEMS_NEW_README.md
+/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/EXP2_FILE_STRUCTURE.txt
+/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/MANIFEST_EXP2_NEW.txt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+End of Manifest
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

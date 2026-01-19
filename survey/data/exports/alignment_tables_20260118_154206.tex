@@ -1,0 +1,35 @@
+% Table: Human-VLM Agreement by Dimension
+\begin{table}[h]
+\centering
+\caption{Human-VLM Agreement by Evaluation Dimension}
+\label{tab:human-vlm-agreement}
+\begin{tabular}{lcccccc}
+\toprule
+Dimension & N & Human $\mu$ & VLM $\mu$ & $r$ & MAE & Agr.\% \\
+\midrule
+Edit Success & 600 & 4.15 & 4.24 & 0.815 & 0.25 & 100.0\% \\
+Skin Tone & 600 & 3.53 & 3.48 & 0.734 & 0.39 & 100.0\% \\
+Race Drift & 600 & 1.34 & 1.13 & 0.443 & 0.23 & 100.0\% \\
+Gender Drift & 600 & 1.20 & 1.00 & 0.153 & 0.20 & 100.0\% \\
+Age Drift & 600 & 3.12 & 3.10 & 0.649 & 0.37 & 100.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Table: Inter-Rater Reliability
+\begin{table}[h]
+\centering
+\caption{Inter-Rater Reliability (Krippendorff's $\alpha$)}
+\label{tab:inter-rater}
+\begin{tabular}{lcc}
+\toprule
+Dimension & $\alpha$ & Agreement\% \\
+\midrule
+Edit Success & 0.000 & 60.5\% \\
+Skin Tone & 0.000 & 46.8\% \\
+Race Drift & 0.000 & 67.7\% \\
+Gender Drift & 0.000 & 68.3\% \\
+Age Drift & 0.000 & 46.7\% \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,82 @@
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                     EXP2 ITEMS FILE STRUCTURE                        ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+INPUT FILES:
+────────────────────────────────────────────────────────────────────────
+📄 AMT Sampling Data
+   /Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/data/amt_sampling/
+   └── exp1_amt_sampled.json (500 items)
+
+🖼️  Preserved Images
+   /Users/chan/Downloads/exp2_pairwise/
+   ├── qwen/preserved/ (472 images)
+   └── step1x/preserved/ (340 images)
+
+OUTPUT FILES:
+────────────────────────────────────────────────────────────────────────
+📄 Generated JSON
+   /Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/public/data/
+   └── exp2_items_new.json (200 items)
+
+SCRIPTS:
+────────────────────────────────────────────────────────────────────────
+🔧 Generation & Verification
+   /Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/
+   ├── generate_exp2_items_new.py (generator)
+   └── verify_exp2_items.py (verification)
+
+DOCUMENTATION:
+────────────────────────────────────────────────────────────────────────
+📚 Reference Docs
+   /Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/survey/scripts/
+   ├── QUICK_START_EXP2.md (quick reference)
+   ├── EXP2_GENERATION_SUMMARY.md (detailed stats)
+   ├── EXP2_ITEMS_NEW_README.md (comprehensive guide)
+   └── EXP2_FILE_STRUCTURE.txt (this file)
+
+IMAGE URL STRUCTURE:
+────────────────────────────────────────────────────────────────────────
+Each item references 3 images:
+
+1️⃣  Source Image
+   URL: /images/source/{race}/{race}_{gender}_{age}.jpg
+   Example: /images/source/Latino/Latino_Female_40s.jpg
+   Location: survey/public/images/source/
+
+2️⃣  Edited Image (from Exp1)
+   URL: /images/exp1_sampling_b_d/{model}/{category}/{filename}
+   Example: /images/exp1_sampling_b_d/qwen/B_occupation/B03_MiddleEastern_Female_60s_success.png
+   Location: survey/public/images/exp1_sampling_b_d/
+
+3️⃣  Preserved Image (Exp2 specific)
+   URL: /images/exp2_preserved/{model}/{promptId}_{race}_{gender}_{age}.png
+   Example: /images/exp2_preserved/qwen/B03_MiddleEastern_Female_60s.png
+   Physical: /Users/chan/Downloads/exp2_pairwise/{model}/preserved/
+   Deploy to: survey/public/images/exp2_preserved/
+
+DEPLOYMENT CHECKLIST:
+────────────────────────────────────────────────────────────────────────
+☐ Copy preserved images to survey/public/images/exp2_preserved/
+☐ Update survey app to load exp2_items_new.json
+☐ Test image loading in browser
+☐ Verify all 200 items display correctly
+
+QUICK COMMANDS:
+────────────────────────────────────────────────────────────────────────
+# Regenerate
+python3 survey/scripts/generate_exp2_items_new.py
+
+# Verify
+python3 survey/scripts/verify_exp2_items.py
+
+# Copy images
+mkdir -p survey/public/images/exp2_preserved/{qwen,step1x}
+cp /Users/chan/Downloads/exp2_pairwise/qwen/preserved/*.png \
+   survey/public/images/exp2_preserved/qwen/
+cp /Users/chan/Downloads/exp2_pairwise/step1x/preserved/*.png \
+   survey/public/images/exp2_preserved/step1x/
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Generated: January 18, 2026
