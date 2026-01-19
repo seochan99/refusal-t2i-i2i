@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { db } from '@/lib/firebase'
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, query, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, query, where, writeBatch } from 'firebase/firestore'
 import { AMT_UNIFIED_CONFIG } from '@/lib/types'
 import { getProlificCompletionUrl, readProlificSession } from '@/lib/prolific'
 import { trackPageView, trackEvent } from '@/lib/analytics'
@@ -106,6 +106,27 @@ function CompletionContent() {
               completedAt: serverTimestamp()
             })
             console.log(`✅ AMT Task completion saved:`, { taskId, userId: user.uid, code: isProlificUser ? 'N/A (Prolific)' : code })
+
+            // Update slot status to 'completed' in amt_task_slots
+            try {
+              const slotQuery = query(
+                collection(db, 'amt_task_slots'),
+                where('taskId', '==', taskId),
+                where('claimedBy', '==', user.uid)
+              )
+              const slotDocs = await getDocs(slotQuery)
+
+              if (!slotDocs.empty) {
+                const slotDoc = slotDocs.docs[0]
+                await updateDoc(slotDoc.ref, { status: 'completed' })
+                console.log(`✅ Slot ${slotDoc.id} marked as completed`)
+              } else {
+                console.warn(`⚠️ No slot found for task ${taskId} and user ${user.uid}`)
+              }
+            } catch (slotError) {
+              // Non-critical - log but don't fail the completion
+              console.error('Error updating slot status:', slotError)
+            }
 
             const completionsQuery = query(
               collection(db, 'amt_task_completions'),

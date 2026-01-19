@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { trackPageView, trackEvent } from '@/lib/analytics'
 import { db } from '@/lib/firebase'
-import { doc, setDoc, getDoc, getDocs, collection, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, getDocs, collection, serverTimestamp, query, where, runTransaction, Timestamp } from 'firebase/firestore'
 import { AMT_UNIFIED_CONFIG } from '@/lib/types'
 import { readProlificSession, getProlificCompletionUrl } from '@/lib/prolific'
 
@@ -13,6 +13,102 @@ interface TaskStatus {
   taskId: number
   completedUsers: string[]  // User UIDs who completed this task
   isLocked: boolean
+  available: number         // Slots available for claiming
+  inProgress: number        // Slots currently in progress
+  completed: number         // Slots completed
+}
+
+// Slot timeout: 2 hours (if a user claims a slot but doesn't complete within 2 hours, it becomes available again)
+const SLOT_TIMEOUT_MS = 2 * 60 * 60 * 1000
+
+/**
+ * Atomically claim a task slot using Firestore Transaction.
+ * This prevents race conditions where multiple users try to claim the same slot.
+ *
+ * @param taskId - The task ID to claim a slot for
+ * @param userId - The user's UID
+ * @returns true if slot was successfully claimed, false otherwise
+ */
+async function claimTaskSlot(taskId: number, userId: string): Promise<boolean> {
+  const now = Date.now()
+
+  try {
+    // Query for available or timed-out slots for this task
+    const slotsQuery = query(
+      collection(db, 'amt_task_slots'),
+      where('taskId', '==', taskId)
+    )
+    const slotsSnapshot = await getDocs(slotsQuery)
+
+    if (slotsSnapshot.empty) {
+      console.warn(`No slots found for task ${taskId}`)
+      return false
+    }
+
+    // Find an available or timed-out slot
+    let targetSlotRef = null
+    for (const slotDoc of slotsSnapshot.docs) {
+      const data = slotDoc.data()
+
+      // Case 1: Available slot
+      if (data.status === 'available') {
+        targetSlotRef = slotDoc.ref
+        break
+      }
+
+      // Case 2: Timed-out in_progress slot (user abandoned)
+      if (data.status === 'in_progress' && data.claimedAt) {
+        const claimedTime = data.claimedAt instanceof Timestamp
+          ? data.claimedAt.toMillis()
+          : new Date(data.claimedAt).getTime()
+
+        if (now - claimedTime > SLOT_TIMEOUT_MS) {
+          console.log(`Slot ${slotDoc.id} timed out, reclaiming...`)
+          targetSlotRef = slotDoc.ref
+          break
+        }
+      }
+    }
+
+    if (!targetSlotRef) {
+      console.log(`No available slots for task ${taskId}`)
+      return false
+    }
+
+    // Atomic claim with transaction
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(targetSlotRef!)
+      const data = snap.data()
+
+      if (!data) {
+        throw new Error('Slot document not found')
+      }
+
+      // Re-validate availability (another user might have claimed it)
+      const isAvailable = data.status === 'available'
+      const isTimedOut = data.status === 'in_progress' &&
+        data.claimedAt &&
+        (now - (data.claimedAt instanceof Timestamp
+          ? data.claimedAt.toMillis()
+          : new Date(data.claimedAt).getTime()) > SLOT_TIMEOUT_MS)
+
+      if (!isAvailable && !isTimedOut) {
+        throw new Error('Slot no longer available')
+      }
+
+      transaction.update(targetSlotRef!, {
+        claimedBy: userId,
+        claimedAt: serverTimestamp(),
+        status: 'in_progress'
+      })
+    })
+
+    console.log(`✅ Successfully claimed slot for task ${taskId}`)
+    return true
+  } catch (error) {
+    console.error(`Failed to claim slot for task ${taskId}:`, error)
+    return false
+  }
 }
 
 // Skeleton loader for task grid
@@ -59,6 +155,7 @@ export default function AMTPage() {
   const [taskStatuses, setTaskStatuses] = useState<Map<number, TaskStatus>>(new Map())
   const [userCompletedTasks, setUserCompletedTasks] = useState<Set<number>>(new Set())
   const [isLoadingTasks, setIsLoadingTasks] = useState(true)
+  const [isSelecting, setIsSelecting] = useState(false)
   const [error, setError] = useState('')
   const [consentStatus, setConsentStatus] = useState<'loading' | 'agreed' | 'missing'>('loading')
   const [consentSource, setConsentSource] = useState<'firebase' | 'local' | 'none'>('none')
@@ -135,16 +232,18 @@ export default function AMTPage() {
     checkConsentAndLoadProfile()
   }, [user, loading, router])
 
-  // Load task statuses from Firebase (track by user UID)
+  // Load task statuses from Firebase (using slot-based tracking)
   useEffect(() => {
     async function loadTaskStatuses() {
       if (!user) return
 
       setIsLoadingTasks(true)
+      const now = Date.now()
+
       try {
-        // Get all task completions
-        const completionsRef = collection(db, 'amt_task_completions')
-        const snapshot = await getDocs(completionsRef)
+        // Get all task slots
+        const slotsRef = collection(db, 'amt_task_slots')
+        const slotsSnapshot = await getDocs(slotsRef)
 
         const statusMap = new Map<number, TaskStatus>()
 
@@ -153,28 +252,55 @@ export default function AMTPage() {
           statusMap.set(i, {
             taskId: i,
             completedUsers: [],
-            isLocked: false
+            isLocked: false,
+            available: 3,
+            inProgress: 0,
+            completed: 0
           })
         }
 
-        // Update with actual completions (track by userId)
-        snapshot.forEach(docSnap => {
+        // Process slots to calculate availability
+        slotsSnapshot.forEach(docSnap => {
           const data = docSnap.data()
           const taskId = data.taskId as number
-          const userId = data.userId as string
-
           const status = statusMap.get(taskId)
-          if (status && userId && !status.completedUsers.includes(userId)) {
-            status.completedUsers.push(userId)
-            status.isLocked = status.completedUsers.length >= AMT_UNIFIED_CONFIG.maxWorkersPerTask
+
+          if (!status) return
+
+          if (data.status === 'completed') {
+            status.completed++
+            status.available--
+            // Track completed users
+            if (data.claimedBy && !status.completedUsers.includes(data.claimedBy)) {
+              status.completedUsers.push(data.claimedBy)
+            }
+          } else if (data.status === 'in_progress') {
+            // Check timeout
+            const claimedTime = data.claimedAt instanceof Timestamp
+              ? data.claimedAt.toMillis()
+              : data.claimedAt ? new Date(data.claimedAt).getTime() : 0
+
+            const isTimedOut = claimedTime && (now - claimedTime > SLOT_TIMEOUT_MS)
+
+            if (!isTimedOut) {
+              status.inProgress++
+              status.available--
+            }
+            // Timed-out slots remain as available
           }
+
+          // Task is locked if no available slots
+          status.isLocked = status.available <= 0
         })
 
         setTaskStatuses(statusMap)
 
-        // Find which tasks current user has completed
+        // Find which tasks current user has completed (from amt_task_completions)
+        const completionsRef = collection(db, 'amt_task_completions')
+        const completionsSnapshot = await getDocs(completionsRef)
+
         const userTasks = new Set<number>()
-        snapshot.forEach(docSnap => {
+        completionsSnapshot.forEach(docSnap => {
           const data = docSnap.data()
           if (data.userId === user.uid) {
             userTasks.add(data.taskId as number)
@@ -182,8 +308,6 @@ export default function AMTPage() {
         })
         setUserCompletedTasks(userTasks)
 
-        // Don't auto-redirect - let user see tasks with lock state
-        // Prolific users who completed tasks will see them as locked/disabled
       } catch (err) {
         console.error('Error loading task statuses:', err)
       } finally {
@@ -213,9 +337,14 @@ export default function AMTPage() {
     }
   }
 
-  const handleSelectTask = (taskId: number) => {
+  const handleSelectTask = async (taskId: number) => {
     if (consentStatus !== 'agreed') {
       setError('Please review and agree to the IRB consent before starting a task')
+      return
+    }
+
+    if (!user) {
+      setError('Please sign in to continue')
       return
     }
 
@@ -236,8 +365,72 @@ export default function AMTPage() {
       return
     }
 
-    // Navigate to evaluation page (use user UID for tracking)
-    router.push(`/tasks/eval?taskId=${taskId}`)
+    // Clear any previous error
+    setError('')
+    setIsSelecting(true)
+
+    try {
+      // Atomically claim a slot for this task
+      const claimed = await claimTaskSlot(taskId, user.uid)
+
+      if (!claimed) {
+        setError('This task is full. Please select another task.')
+        // Reload task statuses to reflect the latest state
+        setIsLoadingTasks(true)
+        const slotsRef = collection(db, 'amt_task_slots')
+        const slotsSnapshot = await getDocs(slotsRef)
+        const now = Date.now()
+
+        const statusMap = new Map<number, TaskStatus>()
+        for (let i = 1; i <= AMT_UNIFIED_CONFIG.totalTasks; i++) {
+          statusMap.set(i, {
+            taskId: i,
+            completedUsers: [],
+            isLocked: false,
+            available: 3,
+            inProgress: 0,
+            completed: 0
+          })
+        }
+
+        slotsSnapshot.forEach(docSnap => {
+          const data = docSnap.data()
+          const taskId = data.taskId as number
+          const taskStatus = statusMap.get(taskId)
+          if (!taskStatus) return
+
+          if (data.status === 'completed') {
+            taskStatus.completed++
+            taskStatus.available--
+            if (data.claimedBy && !taskStatus.completedUsers.includes(data.claimedBy)) {
+              taskStatus.completedUsers.push(data.claimedBy)
+            }
+          } else if (data.status === 'in_progress') {
+            const claimedTime = data.claimedAt instanceof Timestamp
+              ? data.claimedAt.toMillis()
+              : data.claimedAt ? new Date(data.claimedAt).getTime() : 0
+            const isTimedOut = claimedTime && (now - claimedTime > SLOT_TIMEOUT_MS)
+            if (!isTimedOut) {
+              taskStatus.inProgress++
+              taskStatus.available--
+            }
+          }
+          taskStatus.isLocked = taskStatus.available <= 0
+        })
+
+        setTaskStatuses(statusMap)
+        setIsLoadingTasks(false)
+        return
+      }
+
+      // Successfully claimed - navigate to evaluation page
+      router.push(`/tasks/eval?taskId=${taskId}`)
+    } catch (err) {
+      console.error('Error selecting task:', err)
+      setError('An error occurred. Please try again.')
+    } finally {
+      setIsSelecting(false)
+    }
   }
 
   if (loading || !user) {
@@ -475,6 +668,16 @@ export default function AMTPage() {
           </div>
         )}
 
+        {isSelecting && (
+          <div className="mb-4 p-3 rounded text-sm flex items-center gap-2" style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)' }}>
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Reserving your task slot...
+          </div>
+        )}
+
         {/* Task Grid */}
         {isLoadingTasks ? (
           <TaskGridSkeleton />
@@ -491,8 +694,8 @@ export default function AMTPage() {
                 <button
                   key={taskId}
                   onClick={() => handleSelectTask(taskId)}
-                  disabled={!isAvailable}
-                  className={`p-4 rounded-lg transition-all ${isAvailable ? 'hover:scale-105 cursor-pointer' : 'cursor-not-allowed'}`}
+                  disabled={!isAvailable || isSelecting}
+                  className={`p-4 rounded-lg transition-all ${isAvailable && !isSelecting ? 'hover:scale-105 cursor-pointer' : 'cursor-not-allowed'}`}
                   style={{
                     backgroundColor: isCompletedByMe
                       ? 'var(--success-bg)'
@@ -522,29 +725,49 @@ export default function AMTPage() {
                     {AMT_UNIFIED_CONFIG.itemsPerTask} items
                   </div>
                   <div className="flex items-center justify-center gap-1">
-                    {[0, 1, 2].map(slot => (
-                      <div
-                        key={slot}
-                        className="w-3 h-3 rounded-full"
-                        style={{
-                          backgroundColor: slot < workerCount
-                            ? (isCompletedByMe && status?.completedUsers[slot] === user.uid)
-                              ? 'var(--accent-primary)'
-                              : 'var(--success-text)'
-                            : 'var(--bg-tertiary)',
-                          border: '1px solid var(--border-default)'
-                        }}
-                      />
-                    ))}
+                    {[0, 1, 2].map(slot => {
+                      // Determine slot state: completed, in_progress, or available
+                      const completedCount = status?.completed || 0
+                      const inProgressCount = status?.inProgress || 0
+
+                      let slotState: 'completed' | 'in_progress' | 'available'
+                      if (slot < completedCount) {
+                        slotState = 'completed'
+                      } else if (slot < completedCount + inProgressCount) {
+                        slotState = 'in_progress'
+                      } else {
+                        slotState = 'available'
+                      }
+
+                      return (
+                        <div
+                          key={slot}
+                          className="w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor: slotState === 'completed'
+                              ? 'var(--success-text)'
+                              : slotState === 'in_progress'
+                                ? 'var(--warning-text)'
+                                : 'var(--bg-tertiary)',
+                            border: '1px solid var(--border-default)'
+                          }}
+                          title={slotState === 'completed' ? 'Completed' : slotState === 'in_progress' ? 'In Progress' : 'Available'}
+                        />
+                      )
+                    })}
                   </div>
                   <div className="text-xs mt-1" style={{
-                    color: isCompletedByMe 
-                      ? 'var(--success-text)' 
-                      : isLocked 
-                        ? 'var(--error-text)' 
+                    color: isCompletedByMe
+                      ? 'var(--success-text)'
+                      : isLocked
+                        ? 'var(--error-text)'
                         : 'var(--text-muted)'
                   }}>
-                    {isCompletedByMe ? 'Completed ✓' : isLocked ? 'LOCKED 🔒' : `${workerCount}/3`}
+                    {isCompletedByMe
+                      ? 'Completed ✓'
+                      : isLocked
+                        ? 'FULL 🔒'
+                        : `${status?.available || 0} avail`}
                   </div>
                 </button>
               )
@@ -553,7 +776,7 @@ export default function AMTPage() {
         )}
 
         {/* Legend */}
-        <div className="mt-6 flex items-center justify-center gap-6 text-xs" style={{ color: 'var(--text-muted)' }}>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'var(--bg-secondary)', border: '2px solid var(--accent-primary)' }} />
             <span>Available</span>
@@ -564,7 +787,16 @@ export default function AMTPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', border: '2px solid var(--border-default)', opacity: 0.5 }} />
-            <span>Locked (3/3)</span>
+            <span>Full</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Slots:</span>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--success-text)' }} />
+            <span>Done</span>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--warning-text)' }} />
+            <span>In Progress</span>
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-default)' }} />
+            <span>Open</span>
           </div>
         </div>
       </div>
