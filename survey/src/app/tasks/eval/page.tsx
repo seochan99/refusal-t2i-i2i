@@ -890,7 +890,7 @@ function AmtEvalContent() {
   }
 
   return (
-    <div ref={containerRef} className="h-screen p-3 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }} tabIndex={0}>
+    <div ref={containerRef} className="min-h-screen p-3 flex flex-col overflow-auto" style={{ backgroundColor: 'var(--bg-primary)' }} tabIndex={0}>
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-3">
@@ -1036,7 +1036,7 @@ function AmtEvalContent() {
               }}
             />
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1">
             {renderQuestionsPanel('imageA', imageAQ1, setImageAQ1, imageAQ2, setImageAQ2, imageAQ3, setImageAQ3, imageAQ4, setImageAQ4, imageAQ5, setImageAQ5)}
           </div>
         </div>
@@ -1084,7 +1084,7 @@ function AmtEvalContent() {
               }}
             />
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1">
             {renderQuestionsPanel('imageB', imageBQ1, setImageBQ1, imageBQ2, setImageBQ2, imageBQ3, setImageBQ3, imageBQ4, setImageBQ4, imageBQ5, setImageBQ5)}
           </div>
         </div>
