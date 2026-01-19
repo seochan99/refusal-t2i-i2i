@@ -48,6 +48,10 @@ out/
 # Survey images (stored in Firebase Storage, not in git)
 survey/public/images/
 
+# Analysis comparison images (large generated visualizations)
+data/analysis/step1x_prompt_comparisons/*.png
+data/analysis/**/*.png
+
 # Keep dataset images for reproducibility
 # (38MB total - within GitHub limits)
 
