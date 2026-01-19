@@ -177,25 +177,25 @@ function AmtEvalContent() {
   const taskId = taskIdParam ? parseInt(taskIdParam) : null
   const isValidTask = taskId !== null && taskId > 0 && taskId <= AMT_UNIFIED_CONFIG.totalTasks
 
-  // Initialize currentIndex from localStorage if available (for page refresh)
-  const getInitialIndex = () => {
-    if (typeof window === 'undefined') return urlIndex
-    try {
-      const stored = localStorage.getItem('amt_eval_progress')
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        if (parsed.taskId === taskId && parsed.index !== undefined) {
-          return parsed.index
-        }
-      }
-    } catch (e) {
-      console.error('Error reading localStorage:', e)
-    }
-    return urlIndex
-  }
-
   const [items, setItems] = useState<AmtItem[]>([])
-  const [currentIndex, setCurrentIndex] = useState(() => getInitialIndex())
+  const [currentIndex, setCurrentIndex] = useState(urlIndex)
+
+  // Load currentIndex from localStorage after component mounts
+  useEffect(() => {
+    if (typeof window !== 'undefined' && taskId) {
+      try {
+        const stored = localStorage.getItem('amt_eval_progress')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (parsed.taskId === taskId && parsed.index !== undefined) {
+            setCurrentIndex(parsed.index)
+          }
+        }
+      } catch (e) {
+        console.error('Error reading localStorage:', e)
+      }
+    }
+  }, [taskId])
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [storedEvaluations, setStoredEvaluations] = useState<Map<string, StoredEvaluation>>(new Map())
   const [itemStartTime, setItemStartTime] = useState<number>(0)
@@ -1036,7 +1036,7 @@ function AmtEvalContent() {
               }}
             />
           </div>
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {renderQuestionsPanel('imageA', imageAQ1, setImageAQ1, imageAQ2, setImageAQ2, imageAQ3, setImageAQ3, imageAQ4, setImageAQ4, imageAQ5, setImageAQ5)}
           </div>
         </div>
@@ -1084,7 +1084,7 @@ function AmtEvalContent() {
               }}
             />
           </div>
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {renderQuestionsPanel('imageB', imageBQ1, setImageBQ1, imageBQ2, setImageBQ2, imageBQ3, setImageBQ3, imageBQ4, setImageBQ4, imageBQ5, setImageBQ5)}
           </div>
         </div>
