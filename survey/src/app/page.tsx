@@ -1,42 +1,157 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { db } from '@/lib/firebase'
+import { doc, getDoc } from 'firebase/firestore'
+import { normalizeProlificSession, storeProlificSession, readProlificSession } from '@/lib/prolific'
 
-/**
- * Root page - Login only
- * Redirects to /consent after successful login
- */
-export default function LoginPage() {
-  const { user, loading, signInWithGoogle } = useAuth()
+// Skeleton loader component
+function SkeletonLoader() {
+  return (
+    <div className="min-h-screen p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <div className="max-w-4xl mx-auto animate-pulse">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="h-8 w-48 rounded mb-2" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+            <div className="h-4 w-72 rounded" style={{ backgroundColor: 'var(--bg-secondary)' }} />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-24 rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+          </div>
+        </div>
+
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="panel p-4" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              <div className="h-8 w-12 mx-auto rounded mb-2" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+              <div className="h-3 w-16 mx-auto rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+            </div>
+          ))}
+        </div>
+
+        {/* Task grid skeleton */}
+        <div className="grid grid-cols-5 gap-3">
+          {Array.from({ length: 25 }, (_, i) => (
+            <div
+              key={i}
+              className="p-4 rounded-lg"
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                border: '2px solid var(--border-default)'
+              }}
+            >
+              <div className="h-5 w-16 rounded mb-2" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+              <div className="h-3 w-12 rounded mb-3" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+              <div className="flex justify-center gap-1">
+                {[0, 1, 2].map(j => (
+                  <div key={j} className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+                ))}
+              </div>
+              <div className="h-3 w-8 mx-auto rounded mt-2" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LoginContent() {
+  const { user, loading, signInWithGoogle, signInAnonymouslyWithProlific } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [checking, setChecking] = useState(false)
+
+  const prolificSession = useMemo(() => {
+    // First try URL params
+    const prolificPid = searchParams.get('PROLIFIC_PID') || searchParams.get('prolific_pid') || ''
+    const studyId = searchParams.get('STUDY_ID') || searchParams.get('study_id') || ''
+    const sessionId = searchParams.get('SESSION_ID') || searchParams.get('session_id') || ''
+    const fromUrl = normalizeProlificSession({ prolificPid, studyId, sessionId })
+    if (fromUrl) return fromUrl
+
+    // Fallback to localStorage (for page refreshes/redirects)
+    return readProlificSession()
+  }, [searchParams])
 
   useEffect(() => {
-    if (!loading && user) {
-      // Only redirect if we're actually on the home page
-      if (window.location.pathname === '/') {
-        router.push('/consent')
+    if (!prolificSession) return
+    storeProlificSession(prolificSession)
+  }, [prolificSession])
+
+  useEffect(() => {
+    if (!prolificSession) return
+    if (loading || user) return
+
+    setChecking(true)
+    signInAnonymouslyWithProlific(prolificSession)
+      .catch((error) => console.error('Error signing in with Prolific:', error))
+      .finally(() => setChecking(false))
+  }, [prolificSession, loading, user, signInAnonymouslyWithProlific])
+
+  useEffect(() => {
+    async function checkUserState() {
+      if (!loading && user && window.location.pathname === '/') {
+        setChecking(true)
+        try {
+          // Check if user has consented in Firebase
+          const userDoc = await getDoc(doc(db, 'users', user.uid))
+          if (userDoc.exists()) {
+            const data = userDoc.data()
+
+            // Check if user has seen the guide (onboarding)
+            if (!data.hasSeenGuide) {
+              // First time user - send to guide page
+              router.push('/guide')
+              return
+            }
+
+            if (data.irbConsent === true) {
+              // User already consented - go to AMT task selection
+              localStorage.setItem('irb_consent_i2i_bias', 'agreed')
+              router.push('/tasks')
+              return
+            }
+          } else {
+            // New user - send to guide page
+            router.push('/guide')
+            return
+          }
+
+          // Check localStorage as fallback
+          const localConsent = localStorage.getItem('irb_consent_i2i_bias')
+          if (localConsent === 'agreed') {
+            router.push('/tasks')
+            return
+          }
+
+          // No consent found - go to consent page
+          router.push('/consent')
+        } catch (err) {
+          console.error('Error checking user state:', err)
+          router.push('/consent')
+        }
       }
     }
+
+    checkUserState()
   }, [user, loading, router])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <div className="text-base" style={{ color: 'var(--text-muted)' }}>Loading...</div>
-      </div>
-    )
+  // Show skeleton loader while loading/checking
+  if (loading || checking) {
+    return <SkeletonLoader />
   }
 
+  // Show skeleton while user is logged in (brief moment before redirect)
   if (user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <div className="text-base" style={{ color: 'var(--text-muted)' }}>Redirecting...</div>
-      </div>
-    )
+    return <SkeletonLoader />
   }
 
+  // Login screen
   return (
     <div className="min-h-screen flex items-center justify-center p-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="max-w-md w-full panel-elevated p-10 text-center">
@@ -56,10 +171,31 @@ export default function LoginPage() {
           Sign in with Google
         </button>
 
-        <p className="mt-8 text-xs" style={{ color: 'var(--text-disabled)' }}>
+        <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <button
+            onClick={() => router.push('/guide')}
+            className="text-sm underline hover:no-underline"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            How to complete the evaluation
+          </button>
+        </div>
+
+        <p className="mt-4 text-xs" style={{ color: 'var(--text-disabled)' }}>
           Only authorized evaluators can access this tool
         </p>
       </div>
     </div>
+  )
+}
+
+/**
+ * Root page - Login + Redirect to AMT Task Selection
+ */
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<SkeletonLoader />}>
+      <LoginContent />
+    </Suspense>
   )
 }

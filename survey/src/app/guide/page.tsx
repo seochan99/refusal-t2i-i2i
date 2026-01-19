@@ -4,13 +4,13 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { db } from '@/lib/firebase'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { AMT_UNIFIED_CONFIG } from '@/lib/types'
 import { readProlificSession } from '@/lib/prolific'
 
 export default function GuidePage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, loading, signInAnonymouslyWithProlific } = useAuth()
   const [isStarting, setIsStarting] = useState(false)
 
   // Check if this is a Prolific participant
@@ -18,7 +18,20 @@ export default function GuidePage() {
   const isProlific = Boolean(prolificSession?.prolificPid) || user?.isAnonymous
   const maxTasksForUser = isProlific ? 1 : AMT_UNIFIED_CONFIG.maxTasksPerUser
 
+  // Auto sign-in for Prolific users who somehow ended up here without being logged in
+  useEffect(() => {
+    if (loading || user) return
+    if (!prolificSession) return
+
+    signInAnonymouslyWithProlific(prolificSession).catch((error) => {
+      console.error('Error auto-signing in with Prolific:', error)
+    })
+  }, [loading, user, prolificSession, signInAnonymouslyWithProlific])
+
   const handleStartEvaluating = async () => {
+    // Still loading auth state - wait
+    if (loading) return
+
     if (!user) {
       // Not logged in - go to login
       router.push('/')
@@ -454,10 +467,10 @@ export default function GuidePage() {
         <div className="text-center">
           <button
             onClick={handleStartEvaluating}
-            disabled={isStarting}
+            disabled={isStarting || loading}
             className="btn btn-primary px-8 py-3 text-lg"
           >
-            {isStarting ? 'Loading...' : 'Continue to Consent'}
+            {loading ? 'Loading...' : isStarting ? 'Loading...' : 'Continue to Consent'}
           </button>
           <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
             You&apos;ll need to review and agree to the consent form before starting.

@@ -1,14 +1,16 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { User, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
+import { User, signInWithPopup, signOut, onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, googleProvider, db, COLLECTIONS } from '@/lib/firebase'
+import { normalizeProlificSession, readProlificSession, storeProlificSession, type ProlificSession } from '@/lib/prolific'
 
 interface AuthContextType {
   user: User | null
   loading: boolean
   signInWithGoogle: () => Promise<void>
+  signInAnonymouslyWithProlific: (session: ProlificSession) => Promise<void>
   logout: () => Promise<void>
   userProfile: UserProfile | null
 }
@@ -22,6 +24,10 @@ interface UserProfile {
   totalEvaluations: number
   createdAt: Date
   lastActiveAt: Date
+  authProvider: 'google' | 'anonymous'
+  prolificPid: string | null
+  prolificStudyId: string | null
+  prolificSessionId: string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -40,6 +46,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userRef = doc(db, COLLECTIONS.USERS, user.uid)
         const userSnap = await getDoc(userRef)
 
+        const prolificSession = readProlificSession()
+        if (prolificSession) {
+          await setDoc(userRef, {
+            prolificPid: prolificSession.prolificPid,
+            prolificStudyId: prolificSession.studyId,
+            prolificSessionId: prolificSession.sessionId,
+            authProvider: user.isAnonymous ? 'anonymous' : 'google',
+            updatedAt: serverTimestamp()
+          }, { merge: true })
+        }
+
         if (userSnap.exists()) {
           const data = userSnap.data()
           setUserProfile({
@@ -50,7 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             assignedModel: data.assignedModel || null,
             totalEvaluations: data.totalEvaluations || 0,
             createdAt: data.createdAt?.toDate() || new Date(),
-            lastActiveAt: new Date()
+            lastActiveAt: new Date(),
+            authProvider: data.authProvider || (user.isAnonymous ? 'anonymous' : 'google'),
+            prolificPid: data.prolificPid || prolificSession?.prolificPid || null,
+            prolificStudyId: data.prolificStudyId || prolificSession?.studyId || null,
+            prolificSessionId: data.prolificSessionId || prolificSession?.sessionId || null
           })
 
           // Update last active
@@ -65,7 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             assignedModel: null,
             totalEvaluations: 0,
             createdAt: serverTimestamp(),
-            lastActiveAt: serverTimestamp()
+            lastActiveAt: serverTimestamp(),
+            authProvider: user.isAnonymous ? 'anonymous' : 'google',
+            prolificPid: prolificSession?.prolificPid || null,
+            prolificStudyId: prolificSession?.studyId || null,
+            prolificSessionId: prolificSession?.sessionId || null
           }
           await setDoc(userRef, newProfile)
           setUserProfile({
@@ -93,6 +118,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const signInAnonymouslyWithProlific = async (session: ProlificSession) => {
+    const normalized = normalizeProlificSession(session)
+    if (!normalized) {
+      throw new Error('Missing Prolific participant ID')
+    }
+
+    storeProlificSession(normalized)
+    const credential = await signInAnonymously(auth)
+    const user = credential.user
+
+    const userRef = doc(db, COLLECTIONS.USERS, user.uid)
+    await setDoc(userRef, {
+      prolificPid: normalized.prolificPid,
+      prolificStudyId: normalized.studyId,
+      prolificSessionId: normalized.sessionId,
+      authProvider: 'anonymous',
+      updatedAt: serverTimestamp()
+    }, { merge: true })
+  }
+
   const logout = async () => {
     try {
       await signOut(auth)
@@ -103,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, logout, userProfile }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInAnonymouslyWithProlific, logout, userProfile }}>
       {children}
     </AuthContext.Provider>
   )
