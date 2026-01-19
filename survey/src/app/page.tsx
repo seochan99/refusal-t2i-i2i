@@ -86,6 +86,16 @@ function LoginContent() {
     storeProlificSession(prolificSession)
   }, [prolificSession])
 
+  // Track page view
+  useEffect(() => {
+    trackPageView('login')
+  }, [])
+
+  // Track page view
+  useEffect(() => {
+    trackPageView('login')
+  }, [])
+
   useEffect(() => {
     if (!prolificSession) return
     if (loading || user) return

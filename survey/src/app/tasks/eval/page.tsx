@@ -8,6 +8,7 @@ import { collection, doc, setDoc, getDocs, getDoc, query, where, serverTimestamp
 import { AmtItem, AMT_UNIFIED_CONFIG, CATEGORIES } from '@/lib/types'
 import { getPromptText } from '@/lib/prompts'
 import { readProlificSession } from '@/lib/prolific'
+import { trackTaskStart, trackTaskComplete } from '@/lib/analytics'
 
 // Model display names
 const MODEL_NAMES: Record<string, string> = {
