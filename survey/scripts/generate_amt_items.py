@@ -19,57 +19,140 @@ def main():
     script_dir = Path(__file__).parent
     survey_dir = script_dir.parent
     public_data = survey_dir / "public" / "data"
+    base_dir = survey_dir.parent
 
-    input_file = public_data / "exp2_items.json"
-    output_file = public_data / "amt_items.json"
+    # Load exp1_amt_sampled.json (the source sampling)
+    amt_sampled_file = base_dir / "data" / "amt_sampling" / "exp1_amt_sampled.json"
+    print(f"Loading {amt_sampled_file}...")
+    with open(amt_sampled_file, "r") as f:
+        amt_sampled_data = json.load(f)
+    
+    sampled_items = amt_sampled_data["items"]
+    print(f"Loaded {len(sampled_items)} sampled items from exp1_amt_sampled.json")
 
-    # Load exp2 items
-    print(f"Loading {input_file}...")
-    with open(input_file, "r") as f:
+    # Load exp2_items.json to get preserved images
+    exp2_file = public_data / "exp2_items.json"
+    print(f"Loading {exp2_file}...")
+    with open(exp2_file, "r") as f:
         exp2_data = json.load(f)
+    
+    exp2_items = exp2_data["items"]
+    print(f"Loaded {len(exp2_items)} items from exp2_items.json")
+    
+    # Create lookup for exp2 items by (model, promptId, race, gender, age)
+    exp2_lookup = {}
+    for item in exp2_items:
+        key = (item["model"], item["promptId"], item["race"], item["gender"], item["age"])
+        exp2_lookup[key] = item
 
-    items = exp2_data["items"]
-    print(f"Loaded {len(items)} items")
-
+    # Group sampled items by promptId
+    from collections import defaultdict
+    prompt_groups = defaultdict(list)
+    for item in sampled_items:
+        prompt_groups[item["promptId"]].append(item)
+    
+    # Sort prompts for consistent ordering
+    sorted_prompts = sorted(prompt_groups.keys())
+    print(f"Found {len(sorted_prompts)} unique prompts: {sorted_prompts}")
+    
+    # Verify each prompt has 25 items
+    for prompt_id in sorted_prompts:
+        count = len(prompt_groups[prompt_id])
+        if count != 25:
+            print(f"  Warning: Prompt {prompt_id} has {count} items (expected 25)")
+    
     # Count by model
     model_counts = {}
-    for item in items:
+    for item in sampled_items:
         model = item["model"]
         model_counts[model] = model_counts.get(model, 0) + 1
     print(f"Model distribution: {model_counts}")
 
-    # Shuffle with fixed seed for reproducibility
-    random.seed(42)
-    shuffled_items = items.copy()
-    random.shuffle(shuffled_items)
-    print(f"Shuffled {len(shuffled_items)} items with seed=42")
-
-    # Assign new IDs and task numbers
+    # Create tasks: each task gets two prompts (25 items each = 50 items total)
+    # Task 1: B01 + B02, Task 2: B03 + B04, ..., Task 5: B09 + B10
+    # Task 6: D01 + D02, Task 7: D03 + D04, ..., Task 10: D09 + D10
     items_per_task = 50
     amt_items = []
-    for i, item in enumerate(shuffled_items):
-        task_id = (i // items_per_task) + 1  # 1-25
-        amt_item = {
-            "id": f"amt_{i+1:04d}",  # amt_0001, amt_0002, ...
-            "taskId": task_id,
-            "originalId": item["id"],
-            "model": item["model"],
-            "promptId": item["promptId"],
-            "category": item["category"],
-            "categoryName": item.get("categoryName", f"{item['category']}_occupation"),
-            "race": item["race"],
-            "gender": item["gender"],
-            "age": item["age"],
-            "sourceImageUrl": item["sourceImageUrl"],
-            "editedImageUrl": item["editedImageUrl"],
-            "preservedImageUrl": item["preservedImageUrl"]
-        }
-        amt_items.append(amt_item)
+    item_counter = 1
+    
+    # Pair prompts: (B01, B02), (B03, B04), ..., (D09, D10)
+    prompt_pairs = []
+    for i in range(0, len(sorted_prompts), 2):
+        if i + 1 < len(sorted_prompts):
+            prompt_pairs.append((sorted_prompts[i], sorted_prompts[i + 1]))
+        else:
+            prompt_pairs.append((sorted_prompts[i], None))
+    
+    for task_num, (prompt1, prompt2) in enumerate(prompt_pairs[:10], start=1):
+        print(f"Task {task_num}: {prompt1} (25 items) + {prompt2} (25 items) = 50 items")
+        
+        task_items = []
+        
+        # Add items from first prompt
+        for item in prompt_groups[prompt1]:
+            # Find matching exp2 item for preserved image
+            key = (item["model"], item["promptId"], item["race"], item["gender"], item["age"])
+            exp2_item = exp2_lookup.get(key)
+            
+            if exp2_item:
+                preserved_url = exp2_item.get("preservedImageUrl", "")
+            else:
+                preserved_url = ""
+                print(f"  Warning: No preserved image found for {key}")
+            
+            amt_item = {
+                "id": f"amt_{item_counter:04d}",
+                "taskId": task_num,
+                "originalId": item["id"],
+                "model": item["model"],
+                "promptId": item["promptId"],
+                "category": item["category"],
+                "categoryName": item.get("categoryName", f"{item['category']}_occupation"),
+                "race": item["race"],
+                "gender": item["gender"],
+                "age": item["age"],
+                "sourceImageUrl": item["sourceImageUrl"],
+                "editedImageUrl": item["outputImageUrl"],  # exp1 uses outputImageUrl
+                "preservedImageUrl": preserved_url
+            }
+            amt_items.append(amt_item)
+            item_counter += 1
+        
+        # Add items from second prompt
+        if prompt2:
+            for item in prompt_groups[prompt2]:
+                # Find matching exp2 item for preserved image
+                key = (item["model"], item["promptId"], item["race"], item["gender"], item["age"])
+                exp2_item = exp2_lookup.get(key)
+                
+                if exp2_item:
+                    preserved_url = exp2_item.get("preservedImageUrl", "")
+                else:
+                    preserved_url = ""
+                    print(f"  Warning: No preserved image found for {key}")
+                
+                amt_item = {
+                    "id": f"amt_{item_counter:04d}",
+                    "taskId": task_num,
+                    "originalId": item["id"],
+                    "model": item["model"],
+                    "promptId": item["promptId"],
+                    "category": item["category"],
+                    "categoryName": item.get("categoryName", f"{item['category']}_occupation"),
+                    "race": item["race"],
+                    "gender": item["gender"],
+                    "age": item["age"],
+                    "sourceImageUrl": item["sourceImageUrl"],
+                    "editedImageUrl": item["outputImageUrl"],  # exp1 uses outputImageUrl
+                    "preservedImageUrl": preserved_url
+                }
+                amt_items.append(amt_item)
+                item_counter += 1
 
     # Calculate Task info
     total_items = len(amt_items)
-    total_tasks = (total_items + items_per_task - 1) // items_per_task  # ceiling division
-
+    total_tasks = len(prompt_pairs[:10])  # We created exactly 10 tasks
+    
     # Group items by task into tasks array
     tasks = []
     for task_num in range(1, total_tasks + 1):
@@ -89,9 +172,10 @@ def main():
         tasks.append(task_obj)
 
     # Create output data with tasks structure
+    output_file = public_data / "amt_items.json"
     output_data = {
         "experiment": "exp1_amt_evaluation",
-        "description": f"{total_items} items ({items_per_task} per prompt x {total_tasks} tasks), sorted by promptId, 2 prompts per task",
+        "description": f"{total_items} items ({items_per_task} per task), each task has 2 prompts with 25 items each",
         "totalItems": total_items,
         "tasksCount": total_tasks,
         "itemsPerTask": items_per_task,

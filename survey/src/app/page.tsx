@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { db } from '@/lib/firebase'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, getDocs, collection } from 'firebase/firestore'
 import { normalizeProlificSession, storeProlificSession, readProlificSession } from '@/lib/prolific'
+import { AMT_UNIFIED_CONFIG } from '@/lib/types'
 
 // Skeleton loader component
 function SkeletonLoader() {
@@ -61,10 +62,12 @@ function SkeletonLoader() {
 }
 
 function LoginContent() {
-  const { user, loading, signInWithGoogle, signInAnonymouslyWithProlific } = useAuth()
+  const { user, loading, signInWithGoogle, signInAnonymouslyWithProlific, logout } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [checking, setChecking] = useState(false)
+  const [userCompletedTasks, setUserCompletedTasks] = useState<Set<number>>(new Set())
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false)
 
   const prolificSession = useMemo(() => {
     // First try URL params
@@ -111,9 +114,10 @@ function LoginContent() {
             }
 
             if (data.irbConsent === true) {
-              // User already consented - go to AMT task selection
+              // User already consented - set localStorage but don't redirect
               localStorage.setItem('irb_consent_i2i_bias', 'agreed')
-              router.push('/tasks')
+              // Don't auto-redirect - let user stay on home page
+              setChecking(false)
               return
             }
           } else {
@@ -125,15 +129,27 @@ function LoginContent() {
           // Check localStorage as fallback
           const localConsent = localStorage.getItem('irb_consent_i2i_bias')
           if (localConsent === 'agreed') {
-            router.push('/tasks')
+            // Don't auto-redirect - let user stay on home page
+            setChecking(false)
             return
           }
 
           // No consent found - go to consent page
           router.push('/consent')
-        } catch (err) {
+        } catch (err: any) {
+          // Ignore permission errors during logout
+          if (err?.code === 'permission-denied' || err?.code === 'unauthenticated') {
+            console.log('User logged out, skipping Firebase check')
+            setChecking(false)
+            return
+          }
           console.error('Error checking user state:', err)
-          router.push('/consent')
+          // Only redirect if it's not a permission error
+          if (user) {
+            router.push('/consent')
+          }
+        } finally {
+          setChecking(false)
         }
       }
     }
@@ -141,14 +157,87 @@ function LoginContent() {
     checkUserState()
   }, [user, loading, router])
 
+  // Load user's completed tasks from Firebase
+  useEffect(() => {
+    async function loadUserCompletedTasks() {
+      if (!user) {
+        setUserCompletedTasks(new Set())
+        setIsLoadingTasks(false)
+        return
+      }
+
+      setIsLoadingTasks(true)
+      try {
+        // Get all task completions
+        const completionsRef = collection(db, 'amt_task_completions')
+        const snapshot = await getDocs(completionsRef)
+
+        // Find which tasks current user has completed
+        const userTasks = new Set<number>()
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data()
+          if (data.userId === user.uid) {
+            userTasks.add(data.taskId as number)
+          }
+        })
+        setUserCompletedTasks(userTasks)
+      } catch (err: any) {
+        // Ignore permission errors during logout
+        if (err?.code === 'permission-denied' || err?.code === 'unauthenticated') {
+          console.log('User logged out, skipping task loading')
+          setUserCompletedTasks(new Set())
+        } else {
+          console.error('Error loading user completed tasks:', err)
+        }
+      } finally {
+        setIsLoadingTasks(false)
+      }
+    }
+
+    loadUserCompletedTasks()
+  }, [user])
+
   // Show skeleton loader while loading/checking
-  if (loading || checking) {
+  if (loading || checking || isLoadingTasks) {
     return <SkeletonLoader />
   }
 
-  // Show skeleton while user is logged in (brief moment before redirect)
+  // If user is logged in and has consent, show tasks page link with completion status
   if (user) {
-    return <SkeletonLoader />
+    const hasConsent = localStorage.getItem('irb_consent_i2i_bias') === 'agreed'
+    if (hasConsent) {
+      const completedCount = userCompletedTasks.size
+      const totalTasks = AMT_UNIFIED_CONFIG.totalTasks
+      
+      return (
+        <div className="min-h-screen flex items-center justify-center p-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
+          <div className="max-w-md w-full panel-elevated p-10 text-center">
+            <h1 className="text-3xl font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>I2I Bias Evaluation</h1>
+            <p className="mb-2 text-sm" style={{ color: 'var(--text-muted)' }}>Welcome back!</p>
+            {completedCount > 0 && (
+              <p className="mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>
+                Completed: {completedCount} / {totalTasks} tasks
+              </p>
+            )}
+            <button
+              onClick={() => router.push('/tasks')}
+              className="btn btn-primary w-full py-4 text-base font-semibold"
+            >
+              Go to Tasks
+            </button>
+            <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+              <button
+                onClick={logout}
+                className="text-sm underline hover:no-underline"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
   }
 
   // Login screen

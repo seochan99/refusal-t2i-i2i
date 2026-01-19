@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense, useMemo, type SyntheticEvent } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { db, COLLECTIONS } from '@/lib/firebase'
+import { db, COLLECTIONS, getImageUrl } from '@/lib/firebase'
 import { collection, doc, setDoc, getDocs, getDoc, query, where, serverTimestamp, increment } from 'firebase/firestore'
 import { AmtItem, AMT_UNIFIED_CONFIG, CATEGORIES } from '@/lib/types'
 import { getPromptText } from '@/lib/prompts'
@@ -218,16 +218,24 @@ function AmtEvalContent() {
     return shouldShowEditedFirst(currentItem.id)
   }, [currentItem?.id])
 
-  // Get the actual URLs for Image A and Image B
+  // Get the actual URLs for Image A and Image B (convert to Firebase Storage URLs)
   const imageAUrl = useMemo(() => {
     if (!currentItem) return ''
-    return editedIsImageA ? currentItem.editedImageUrl : currentItem.preservedImageUrl
+    const url = editedIsImageA ? currentItem.editedImageUrl : currentItem.preservedImageUrl
+    return getImageUrl(url)
   }, [currentItem, editedIsImageA])
 
   const imageBUrl = useMemo(() => {
     if (!currentItem) return ''
-    return editedIsImageA ? currentItem.preservedImageUrl : currentItem.editedImageUrl
+    const url = editedIsImageA ? currentItem.preservedImageUrl : currentItem.editedImageUrl
+    return getImageUrl(url)
   }, [currentItem, editedIsImageA])
+  
+  // Source image URL (convert to Firebase Storage URL)
+  const sourceImageUrl = useMemo(() => {
+    if (!currentItem) return ''
+    return getImageUrl(currentItem.sourceImageUrl)
+  }, [currentItem])
 
   const recordSessionStart = useCallback(async () => {
     if (!user || !isValidTask || !taskId) return
@@ -404,6 +412,14 @@ function AmtEvalContent() {
   // Load existing answers when navigating (map stored edited/preserved back to imageA/imageB)
   useEffect(() => {
     if (!currentItem) return
+
+    // Reset image loading states when item changes
+    setSourceLoaded(false)
+    setImageALoaded(false)
+    setImageBLoaded(false)
+    setSourceError(false)
+    setImageAError(false)
+    setImageBError(false)
 
     const stored = storedEvaluations.get(currentItem.id)
     if (stored) {
@@ -739,7 +755,7 @@ function AmtEvalContent() {
 
     return (
       <div
-        className={`mb-1.5 p-1.5 rounded-lg transition-all cursor-pointer ${disabled ? 'opacity-40' : ''}`}
+        className={`mb-1 p-1 rounded-lg transition-all cursor-pointer ${disabled ? 'opacity-40' : ''}`}
         style={{
           backgroundColor: isActive ? 'var(--bg-elevated)' : 'var(--bg-secondary)',
           border: `2px solid ${isActive ? 'var(--accent-primary)' : hasValue ? 'var(--success-text)' : 'var(--border-default)'}`
@@ -747,13 +763,13 @@ function AmtEvalContent() {
         onClick={() => !disabled && setActiveQuestion(qNum)}
       >
         <div className="flex items-center justify-between mb-0.5">
-          <h3 className="font-bold flex items-center gap-1.5" style={{ color: 'var(--text-primary)', fontSize: '0.65rem' }}>
+          <h3 className="font-bold flex items-center gap-1" style={{ color: 'var(--text-primary)', fontSize: '0.6rem' }}>
             <span
-              className="w-4 h-4 rounded-full flex items-center justify-center font-bold flex-shrink-0"
+              className="w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold flex-shrink-0"
               style={{
                 backgroundColor: isActive ? 'var(--accent-primary)' : hasValue ? 'var(--success-text)' : 'var(--bg-tertiary)',
                 color: isActive || hasValue ? 'var(--bg-primary)' : 'var(--text-muted)',
-                fontSize: '0.55rem'
+                fontSize: '0.5rem'
               }}
             >
               {qNum}
@@ -770,7 +786,7 @@ function AmtEvalContent() {
                 key={score}
                 onClick={(e) => { e.stopPropagation(); !disabled && setValue(score) }}
                 disabled={disabled}
-                className="py-1 px-0.5 rounded font-semibold transition-all"
+                className="py-0.5 px-0 rounded font-semibold transition-all"
                 style={{
                   backgroundColor: value === score ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
                   border: `1px solid ${value === score ? 'var(--accent-primary)' : 'var(--border-default)'}`,
@@ -778,8 +794,8 @@ function AmtEvalContent() {
                 }}
                 title={label.replace('\n', ' ')}
               >
-                <div className="font-bold" style={{ fontSize: '0.7rem' }}>{score}</div>
-                <div className="leading-tight truncate" style={{ fontSize: '0.4rem' }}>{mainLabel}</div>
+                <div className="font-bold" style={{ fontSize: '0.65rem' }}>{score}</div>
+                <div className="leading-tight truncate" style={{ fontSize: '0.35rem' }}>{mainLabel}</div>
               </button>
             )
           })}
@@ -808,14 +824,14 @@ function AmtEvalContent() {
 
     return (
       <div
-        className="flex-1 rounded-lg p-2 transition-all cursor-pointer"
+        className="flex-1 rounded-lg p-1.5 transition-all cursor-pointer"
         style={{
           backgroundColor: 'var(--bg-secondary)',
           border: `2px solid ${isActivePanel ? 'var(--accent-primary)' : allAnswered ? 'var(--success-text)' : 'var(--border-default)'}`
         }}
         onClick={() => setActiveImage(imageLabel)}
       >
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-0.5">
           <span className="text-xs font-bold" style={{ color: isActivePanel ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
             {imageLabel === 'imageA' ? 'Image A' : 'Image B'}
           </span>
@@ -908,7 +924,7 @@ function AmtEvalContent() {
       {/* Main Content - Three columns: Source | Image A + Qs | Image B + Qs */}
       <div className="flex-1 flex gap-3 min-h-0">
         {/* Left: Source Image + Prompt */}
-        <div className="flex flex-col" style={{ width: '240px' }}>
+        <div className="flex flex-col" style={{ width: '200px', minWidth: '200px' }}>
           <div className="text-center mb-1">
             <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>SOURCE</span>
             <span className="text-xs ml-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
@@ -926,11 +942,14 @@ function AmtEvalContent() {
             )}
             <img
               key={`source-${currentItem.id}`}
-              src={currentItem.sourceImageUrl}
+              src={sourceImageUrl}
               alt="Source"
               className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${sourceLoaded ? 'opacity-100' : 'opacity-0'}`}
               onLoad={() => setSourceLoaded(true)}
-              onError={(e) => handleImageError(e, setSourceError)}
+              onError={(e) => {
+                console.error('Source image error:', sourceImageUrl, e)
+                handleImageError(e, setSourceError)
+              }}
             />
           </div>
           {/* Prompt */}
@@ -948,7 +967,7 @@ function AmtEvalContent() {
         </div>
 
         {/* Middle: Image A + Questions */}
-        <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-h-0" style={{ minWidth: 0 }}>
           <div
             className="text-center mb-1 cursor-pointer transition-all rounded px-2 py-0.5"
             style={{ backgroundColor: activeImage === 'imageA' ? 'var(--accent-primary)' : 'var(--bg-tertiary)' }}
@@ -957,8 +976,16 @@ function AmtEvalContent() {
             <span className="text-xs font-bold" style={{ color: activeImage === 'imageA' ? 'var(--bg-primary)' : 'var(--text-muted)' }}>Image A</span>
           </div>
           <div
-            className="rounded-lg flex items-center justify-center overflow-hidden aspect-square mb-2 cursor-pointer transition-all relative"
-            style={{ backgroundColor: 'var(--bg-secondary)', border: `3px solid ${activeImage === 'imageA' ? 'var(--accent-primary)' : 'var(--border-default)'}` }}
+            className="rounded-lg flex items-center justify-center overflow-hidden aspect-square mb-2 cursor-pointer transition-all relative mx-auto"
+            style={{ 
+              backgroundColor: 'var(--bg-secondary)', 
+              border: `3px solid ${activeImage === 'imageA' ? 'var(--accent-primary)' : 'var(--border-default)'}`,
+              flexShrink: 0,
+              maxWidth: '280px',
+              maxHeight: '280px',
+              width: '280px',
+              height: '280px'
+            }}
             onClick={() => setActiveImage('imageA')}
           >
             {!imageALoaded && !imageAError && (
@@ -973,16 +1000,22 @@ function AmtEvalContent() {
               key={`imageA-${currentItem.id}`}
               src={imageAUrl}
               alt="Image A"
-              className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${imageALoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`w-full h-full object-contain transition-opacity duration-300 ${imageALoaded ? 'opacity-100' : 'opacity-0'}`}
+              style={{ objectPosition: 'center' }}
               onLoad={() => setImageALoaded(true)}
-              onError={(e) => handleImageError(e, setImageAError)}
+              onError={(e) => {
+                console.error('Image A error:', imageAUrl, e)
+                handleImageError(e, setImageAError)
+              }}
             />
           </div>
-          {renderQuestionsPanel('imageA', imageAQ1, setImageAQ1, imageAQ2, setImageAQ2, imageAQ3, setImageAQ3, imageAQ4, setImageAQ4, imageAQ5, setImageAQ5)}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {renderQuestionsPanel('imageA', imageAQ1, setImageAQ1, imageAQ2, setImageAQ2, imageAQ3, setImageAQ3, imageAQ4, setImageAQ4, imageAQ5, setImageAQ5)}
+          </div>
         </div>
 
         {/* Right: Image B + Questions */}
-        <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-h-0" style={{ minWidth: 0 }}>
           <div
             className="text-center mb-1 cursor-pointer transition-all rounded px-2 py-0.5"
             style={{ backgroundColor: activeImage === 'imageB' ? 'var(--accent-secondary)' : 'var(--bg-tertiary)' }}
@@ -991,8 +1024,16 @@ function AmtEvalContent() {
             <span className="text-xs font-bold" style={{ color: activeImage === 'imageB' ? 'var(--bg-primary)' : 'var(--text-muted)' }}>Image B</span>
           </div>
           <div
-            className="rounded-lg flex items-center justify-center overflow-hidden aspect-square mb-2 cursor-pointer transition-all relative"
-            style={{ backgroundColor: 'var(--bg-secondary)', border: `3px solid ${activeImage === 'imageB' ? 'var(--accent-secondary)' : 'var(--border-default)'}` }}
+            className="rounded-lg flex items-center justify-center overflow-hidden aspect-square mb-2 cursor-pointer transition-all relative mx-auto"
+            style={{ 
+              backgroundColor: 'var(--bg-secondary)', 
+              border: `3px solid ${activeImage === 'imageB' ? 'var(--accent-secondary)' : 'var(--border-default)'}`,
+              flexShrink: 0,
+              maxWidth: '280px',
+              maxHeight: '280px',
+              width: '280px',
+              height: '280px'
+            }}
             onClick={() => setActiveImage('imageB')}
           >
             {!imageBLoaded && !imageBError && (
@@ -1007,12 +1048,18 @@ function AmtEvalContent() {
               key={`imageB-${currentItem.id}`}
               src={imageBUrl}
               alt="Image B"
-              className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${imageBLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`w-full h-full object-contain transition-opacity duration-300 ${imageBLoaded ? 'opacity-100' : 'opacity-0'}`}
+              style={{ objectPosition: 'center' }}
               onLoad={() => setImageBLoaded(true)}
-              onError={(e) => handleImageError(e, setImageBError)}
+              onError={(e) => {
+                console.error('Image B error:', imageBUrl, e)
+                handleImageError(e, setImageBError)
+              }}
             />
           </div>
-          {renderQuestionsPanel('imageB', imageBQ1, setImageBQ1, imageBQ2, setImageBQ2, imageBQ3, setImageBQ3, imageBQ4, setImageBQ4, imageBQ5, setImageBQ5)}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {renderQuestionsPanel('imageB', imageBQ1, setImageBQ1, imageBQ2, setImageBQ2, imageBQ3, setImageBQ3, imageBQ4, setImageBQ4, imageBQ5, setImageBQ5)}
+          </div>
         </div>
       </div>
 

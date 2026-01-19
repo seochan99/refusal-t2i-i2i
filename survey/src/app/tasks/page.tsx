@@ -181,12 +181,8 @@ export default function AMTPage() {
         })
         setUserCompletedTasks(userTasks)
 
-        // Prolific users: if already completed 1 task, redirect to complete page
-        if (isProlific && userTasks.size >= 1) {
-          const completedTaskId = Array.from(userTasks)[0]
-          router.push(`/complete?exp=amt&taskId=${completedTaskId}&completed=${AMT_UNIFIED_CONFIG.itemsPerTask}`)
-          return
-        }
+        // Don't auto-redirect - let user see tasks with lock state
+        // Prolific users who completed tasks will see them as locked/disabled
       } catch (err) {
         console.error('Error loading task statuses:', err)
       } finally {
@@ -463,7 +459,7 @@ export default function AMTPage() {
             </div>
             {isProlific && (
               <button
-                onClick={() => window.location.assign(getProlificCompletionUrl())}
+                onClick={() => window.open(getProlificCompletionUrl(), '_blank')}
                 className="btn btn-primary mt-3 px-6 py-2"
               >
                 Finish on Prolific
@@ -541,9 +537,13 @@ export default function AMTPage() {
                     ))}
                   </div>
                   <div className="text-xs mt-1" style={{
-                    color: isLocked ? 'var(--error-text)' : 'var(--text-muted)'
+                    color: isCompletedByMe 
+                      ? 'var(--success-text)' 
+                      : isLocked 
+                        ? 'var(--error-text)' 
+                        : 'var(--text-muted)'
                   }}>
-                    {isCompletedByMe ? 'Completed' : isLocked ? 'LOCKED' : `${workerCount}/3`}
+                    {isCompletedByMe ? 'Completed ✓' : isLocked ? 'LOCKED 🔒' : `${workerCount}/3`}
                   </div>
                 </button>
               )

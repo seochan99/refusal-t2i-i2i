@@ -42,62 +42,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(user)
 
       if (user) {
-        // Get or create user profile in Firestore
-        const userRef = doc(db, COLLECTIONS.USERS, user.uid)
-        const userSnap = await getDoc(userRef)
+        try {
+          // Get or create user profile in Firestore
+          const userRef = doc(db, COLLECTIONS.USERS, user.uid)
+          const userSnap = await getDoc(userRef)
 
-        const prolificSession = readProlificSession()
-        if (prolificSession) {
-          await setDoc(userRef, {
-            prolificPid: prolificSession.prolificPid,
-            prolificStudyId: prolificSession.studyId,
-            prolificSessionId: prolificSession.sessionId,
-            authProvider: user.isAnonymous ? 'anonymous' : 'google',
-            updatedAt: serverTimestamp()
-          }, { merge: true })
-        }
-
-        if (userSnap.exists()) {
-          const data = userSnap.data()
-          setUserProfile({
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || '',
-            photoURL: user.photoURL || '',
-            assignedModel: data.assignedModel || null,
-            totalEvaluations: data.totalEvaluations || 0,
-            createdAt: data.createdAt?.toDate() || new Date(),
-            lastActiveAt: new Date(),
-            authProvider: data.authProvider || (user.isAnonymous ? 'anonymous' : 'google'),
-            prolificPid: data.prolificPid || prolificSession?.prolificPid || null,
-            prolificStudyId: data.prolificStudyId || prolificSession?.studyId || null,
-            prolificSessionId: data.prolificSessionId || prolificSession?.sessionId || null
-          })
-
-          // Update last active
-          await setDoc(userRef, { lastActiveAt: serverTimestamp() }, { merge: true })
-        } else {
-          // Create new user profile
-          const newProfile = {
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || '',
-            photoURL: user.photoURL || '',
-            assignedModel: null,
-            totalEvaluations: 0,
-            createdAt: serverTimestamp(),
-            lastActiveAt: serverTimestamp(),
-            authProvider: user.isAnonymous ? 'anonymous' : 'google',
-            prolificPid: prolificSession?.prolificPid || null,
-            prolificStudyId: prolificSession?.studyId || null,
-            prolificSessionId: prolificSession?.sessionId || null
+          const prolificSession = readProlificSession()
+          if (prolificSession) {
+            await setDoc(userRef, {
+              prolificPid: prolificSession.prolificPid,
+              prolificStudyId: prolificSession.studyId,
+              prolificSessionId: prolificSession.sessionId,
+              authProvider: user.isAnonymous ? 'anonymous' : 'google',
+              updatedAt: serverTimestamp()
+            }, { merge: true })
           }
-          await setDoc(userRef, newProfile)
-          setUserProfile({
-            ...newProfile,
-            createdAt: new Date(),
-            lastActiveAt: new Date()
-          } as UserProfile)
+
+          if (userSnap.exists()) {
+            const data = userSnap.data()
+            setUserProfile({
+              uid: user.uid,
+              email: user.email || '',
+              displayName: user.displayName || '',
+              photoURL: user.photoURL || '',
+              assignedModel: data.assignedModel || null,
+              totalEvaluations: data.totalEvaluations || 0,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              lastActiveAt: new Date(),
+              authProvider: data.authProvider || (user.isAnonymous ? 'anonymous' : 'google'),
+              prolificPid: data.prolificPid || prolificSession?.prolificPid || null,
+              prolificStudyId: data.prolificStudyId || prolificSession?.studyId || null,
+              prolificSessionId: data.prolificSessionId || prolificSession?.sessionId || null
+            })
+
+            // Update last active
+            await setDoc(userRef, { lastActiveAt: serverTimestamp() }, { merge: true })
+          } else {
+            // Create new user profile
+            const newProfile = {
+              uid: user.uid,
+              email: user.email || '',
+              displayName: user.displayName || '',
+              photoURL: user.photoURL || '',
+              assignedModel: null,
+              totalEvaluations: 0,
+              createdAt: serverTimestamp(),
+              lastActiveAt: serverTimestamp(),
+              authProvider: user.isAnonymous ? 'anonymous' : 'google',
+              prolificPid: prolificSession?.prolificPid || null,
+              prolificStudyId: prolificSession?.studyId || null,
+              prolificSessionId: prolificSession?.sessionId || null
+            }
+            await setDoc(userRef, newProfile)
+            setUserProfile({
+              ...newProfile,
+              createdAt: new Date(),
+              lastActiveAt: new Date()
+            } as UserProfile)
+          }
+        } catch (error: any) {
+          // Ignore permission errors during logout/auth state changes
+          if (error?.code === 'permission-denied' || error?.code === 'unauthenticated') {
+            console.log('Auth state changed, skipping Firestore operations')
+            setUserProfile(null)
+          } else {
+            console.error('Error loading user profile:', error)
+          }
         }
       } else {
         setUserProfile(null)
