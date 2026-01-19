@@ -269,50 +269,53 @@ function ConsentContent() {
             </div>
           </div>
 
-          {/* Agreement Notice */}
-          <div className="p-4 rounded-lg mb-4" style={{ backgroundColor: 'var(--info-bg)', border: '1px solid var(--info-text)' }}>
-            <p className="text-sm" style={{ color: 'var(--info-text)' }}>
-              By submitting answers to this survey, you are agreeing to participate in this study.
-            </p>
-          </div>
+        </div>
 
+        {/* Spacer for fixed footer */}
+        <div className="h-36" />
+      </div>
+
+      {/* Fixed Footer - Consent & Button */}
+      <div
+        className="fixed bottom-0 left-0 right-0 p-4 border-t"
+        style={{
+          backgroundColor: 'var(--bg-elevated)',
+          borderColor: 'var(--border-default)',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.15)'
+        }}
+      >
+        <div className="max-w-4xl mx-auto">
           {/* Consent Checkbox */}
-          <label className="flex items-start gap-4 p-4 rounded-lg cursor-pointer transition-all"
+          <label className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all mb-3"
             style={{
               backgroundColor: agreed ? 'var(--success-bg)' : 'var(--bg-secondary)',
-              border: agreed ? '2px solid var(--success-text)' : '2px solid transparent'
+              border: agreed ? '2px solid var(--success-text)' : '2px solid var(--border-default)'
             }}>
             <input
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 w-5 h-5 rounded border-2 focus:ring-2 focus:ring-offset-2 transition-all flex-shrink-0"
+              className="w-6 h-6 rounded border-2 focus:ring-2 focus:ring-offset-2 transition-all flex-shrink-0"
               style={{
                 borderColor: agreed ? 'var(--success-text)' : 'var(--border-default)',
                 backgroundColor: agreed ? 'var(--success-text)' : 'transparent',
                 accentColor: 'var(--success-text)'
               }}
             />
-            <span className="text-sm leading-relaxed" style={{ color: agreed ? 'var(--success-text)' : 'var(--text-secondary)' }}>
-              I have read and understood the information above. I am 18 years of age or older,
-              and I agree to participate in this research study.
+            <span className="text-sm" style={{ color: agreed ? 'var(--success-text)' : 'var(--text-secondary)' }}>
+              I am 18+ years old, I have read the above, and I agree to participate.
             </span>
           </label>
+
+          {/* Action Button */}
+          <button
+            onClick={handleConsent}
+            disabled={!agreed}
+            className="btn btn-primary w-full py-4 text-base font-bold"
+          >
+            {agreed ? 'Start Evaluation' : 'Check the box above to continue'}
+          </button>
         </div>
-
-        {/* Action Button */}
-        <button
-          onClick={handleConsent}
-          disabled={!agreed}
-          className="btn btn-primary w-full py-4 text-base font-semibold"
-        >
-          {agreed ? 'Start Evaluation' : 'Please agree to continue'}
-        </button>
-
-        {/* Footer Info */}
-        <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
-          Bot Intelligence Group &middot; Carnegie Mellon University
-        </p>
       </div>
     </div>
   )
