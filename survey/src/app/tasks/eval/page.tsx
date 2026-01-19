@@ -55,13 +55,11 @@ async function loadAmtItems(taskId: number): Promise<AmtItem[]> {
       return []
     }
     
-    // Map items to include taskId and required fields for compatibility
+    // Map items to include taskId for compatibility (items already have editedImageUrl and preservedImageUrl)
     const taskItems = task.items.map((item: any) => ({
       ...item,
       taskId: taskId,
-      originalId: item.id, // Use id as originalId if not provided
-      editedImageUrl: item.editedImageUrl || item.outputImageUrl || '',
-      preservedImageUrl: item.preservedImageUrl || item.outputImageUrl || ''
+      originalId: item.originalId || item.id // Use originalId if provided, otherwise use id
     }))
     
     console.log(`Task ${taskIdStr}: ${taskItems.length} items loaded`)
