@@ -5,7 +5,7 @@ import { User, signInWithPopup, signOut, onAuthStateChanged, signInAnonymously }
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, googleProvider, db, COLLECTIONS } from '@/lib/firebase'
 import { normalizeProlificSession, readProlificSession, storeProlificSession, type ProlificSession } from '@/lib/prolific'
-import { setUserType } from '@/lib/analytics'
+import { setUserType, trackEvent } from '@/lib/analytics'
 
 interface AuthContextType {
   user: User | null

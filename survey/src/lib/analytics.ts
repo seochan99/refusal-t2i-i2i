@@ -71,3 +71,33 @@ export function setUserType(userType: 'regular' | 'prolific' | 'amt') {
     }
   }
 }
+
+export function trackError(errorType: string, errorMessage: string, context?: Record<string, any>) {
+  trackEvent('error_occurred', {
+    error_type: errorType,
+    error_message: errorMessage,
+    ...context
+  });
+}
+
+export function trackButtonClick(buttonName: string, context?: Record<string, any>) {
+  trackEvent('button_click', {
+    button_name: buttonName,
+    ...context
+  });
+}
+
+export function trackSessionStart(sessionType: string) {
+  trackEvent('session_start', {
+    session_type: sessionType,
+    timestamp: Date.now()
+  });
+}
+
+export function trackSessionEnd(sessionType: string, duration: number) {
+  trackEvent('session_end', {
+    session_type: sessionType,
+    duration_ms: duration,
+    timestamp: Date.now()
+  });
+}

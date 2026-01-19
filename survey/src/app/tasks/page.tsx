@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import { trackPageView, trackEvent } from '@/lib/analytics'
 import { db } from '@/lib/firebase'
 import { doc, setDoc, getDoc, getDocs, collection, serverTimestamp } from 'firebase/firestore'
 import { AMT_UNIFIED_CONFIG } from '@/lib/types'

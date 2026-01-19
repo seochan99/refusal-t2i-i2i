@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { db } from '@/lib/firebase'
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { readProlificSession } from '@/lib/prolific'
+import { trackPageView, trackEvent } from '@/lib/analytics'
 
 function ConsentContent() {
   const { user, loading, logout } = useAuth()
@@ -27,7 +28,10 @@ function ConsentContent() {
       }
       return
     }
-  }, [user, loading, router])
+
+    // Track page view
+    trackPageView('consent', { review_mode: isReviewMode })
+  }, [user, loading, router, isReviewMode])
 
   // Check if user already consented (Firebase + localStorage)
   useEffect(() => {

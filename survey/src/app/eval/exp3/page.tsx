@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { trackPageView, trackEvaluationStart, trackEvaluationComplete } from '@/lib/analytics'
 import { db, S3_BUCKET_URL } from '@/lib/firebase'
 import { collection, doc, setDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore'
 import type { WinoBiasItem } from '@/lib/types'
@@ -87,6 +88,14 @@ function Exp3Content() {
       router.push('/')
     }
   }, [user, loading, router])
+
+  // Track page view and evaluation start
+  useEffect(() => {
+    if (user && model) {
+      trackPageView('eval_exp3', { model })
+      trackEvaluationStart('exp3', model)
+    }
+  }, [user, model])
 
   // Update URL when index changes
   useEffect(() => {
@@ -266,6 +275,7 @@ function Exp3Content() {
   // Redirect to completion page when all items are done
   useEffect(() => {
     if (items.length > 0 && completedIds.size === items.length) {
+      trackEvaluationComplete('exp3', model, Date.now() - itemStartTime, items.length)
       router.push(`/complete?exp=exp3&model=${model}&completed=${completedIds.size}`)
     }
   }, [items.length, completedIds.size, model, router])

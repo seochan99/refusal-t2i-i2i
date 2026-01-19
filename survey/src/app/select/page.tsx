@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import { trackPageView, trackEvent } from '@/lib/analytics'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore'
 import { MODELS_EXP1, MODELS_EXP2, MODELS_EXP3 } from '@/lib/types'

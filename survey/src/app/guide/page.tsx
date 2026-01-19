@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { trackPageView } from '@/lib/analytics'
 import { useAuth } from '@/contexts/AuthContext'
 import { db } from '@/lib/firebase'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'

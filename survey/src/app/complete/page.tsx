@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, query, where } from 'firebase/firestore'
 import { AMT_UNIFIED_CONFIG } from '@/lib/types'
 import { getProlificCompletionUrl, readProlificSession } from '@/lib/prolific'
+import { trackPageView, trackEvent } from '@/lib/analytics'
 
 function generateCompletionCode(userId: string, experiment: string, model: string): string {
   // Generate a unique completion code based on user, experiment, and timestamp
@@ -53,6 +54,8 @@ function CompletionContent() {
     }
 
     if (user) {
+      // Track page view
+      trackPageView('complete', { experiment, model, completed, task_mode: isTaskMode, task_id: taskId })
       const session = readProlificSession()
       const isProlificUser = Boolean(session) || user.isAnonymous
       setIsProlific(isProlificUser)

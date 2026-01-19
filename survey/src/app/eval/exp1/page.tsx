@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { trackPageView, trackEvaluationStart, trackEvaluationComplete } from '@/lib/analytics'
 import { db, S3_BUCKET_URL, COLLECTIONS } from '@/lib/firebase'
 import { collection, doc, setDoc, getDocs, getDoc, query, where, serverTimestamp } from 'firebase/firestore'
 import { MODELS_EXP1, CATEGORIES, RACES, GENDERS, AGES, type EvalItem } from '@/lib/types'
@@ -84,6 +85,14 @@ function Exp1Content() {
       router.push('/')
     }
   }, [user, loading, router])
+
+  // Track page view and evaluation start
+  useEffect(() => {
+    if (user && model) {
+      trackPageView('eval_exp1', { model })
+      trackEvaluationStart('exp1', model)
+    }
+  }, [user, model])
 
   // Update URL when index changes
   useEffect(() => {
@@ -330,6 +339,7 @@ function Exp1Content() {
 
   // Redirect to completion page when all items are done
   if (items.length > 0 && completedIds.size === items.length) {
+    trackEvaluationComplete('exp1', model, Date.now() - itemStartTime, items.length)
     router.push(`/complete?exp=exp1&model=${model}&completed=${completedIds.size}`)
     return null
   }
