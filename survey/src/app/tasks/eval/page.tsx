@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense, useMemo, type Synth
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { db, COLLECTIONS, getImageUrl } from '@/lib/firebase'
-import { collection, doc, setDoc, getDocs, getDoc, query, where, serverTimestamp, increment } from 'firebase/firestore'
+import { collection, doc, setDoc, getDocs, getDoc, query, where, serverTimestamp, increment, updateDoc } from 'firebase/firestore'
 import { AmtItem, AMT_UNIFIED_CONFIG, CATEGORIES } from '@/lib/types'
 import { getPromptText } from '@/lib/prompts'
 import { readProlificSession } from '@/lib/prolific'
@@ -712,6 +712,43 @@ function AmtEvalContent() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [currentIndex, items, completedIds, activeImage, activeQuestion])
 
+  // Handle exit - release the slot before leaving
+  const handleExit = useCallback(async () => {
+    if (!user || !taskId) {
+      router.push('/tasks')
+      return
+    }
+
+    try {
+      // Find and release the user's slot for this task
+      const slotsQuery = query(
+        collection(db, 'amt_task_slots'),
+        where('taskId', '==', taskId),
+        where('claimedBy', '==', user.uid)
+      )
+      const slotsSnapshot = await getDocs(slotsQuery)
+
+      if (!slotsSnapshot.empty) {
+        const slotDoc = slotsSnapshot.docs[0]
+        const slotData = slotDoc.data()
+
+        // Only release if status is 'in_progress' (not completed)
+        if (slotData.status === 'in_progress') {
+          await updateDoc(slotDoc.ref, {
+            claimedBy: null,
+            claimedAt: null,
+            status: 'available'
+          })
+          console.log(`✅ Released slot ${slotDoc.id} on exit`)
+        }
+      }
+    } catch (error) {
+      console.error('Error releasing slot on exit:', error)
+    }
+
+    router.push('/tasks')
+  }, [user, taskId, router])
+
   if (loading || !user) {
     return <EvalSkeleton />
   }
@@ -908,7 +945,7 @@ function AmtEvalContent() {
             Task {taskId}
           </span>
           <button
-            onClick={() => router.push('/tasks')}
+            onClick={handleExit}
             className="text-xs px-2 py-1 rounded"
             style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}
           >
