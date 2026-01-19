@@ -17,8 +17,8 @@ interface EvalItem {
   isUnchanged: boolean
 }
 
-const RESULTS_BASE = '/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/data/results'
-const SOURCE_IMAGES_BASE = '/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/data/source_images/final'
+const RESULTS_BASE = join(process.cwd(), '../../../data/results')
+const SOURCE_IMAGES_BASE = join(process.cwd(), '../../../data/source_images')
 
 async function imageToBase64(imagePath: string): Promise<string> {
   try {
