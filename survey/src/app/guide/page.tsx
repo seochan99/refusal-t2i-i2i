@@ -103,7 +103,7 @@ export default function GuidePage() {
                 <div className="aspect-square rounded-lg overflow-hidden"
                   style={{ border: '2px solid var(--border-default)' }}>
                   <img
-                    src="/images/source/EastAsian/EastAsian_Male_50s.jpg"
+                    src="/examples/source-example.jpg"
                     alt="Source image example"
                     className="w-full h-full object-cover"
                   />
@@ -114,7 +114,7 @@ export default function GuidePage() {
                 <div className="aspect-square rounded-lg overflow-hidden"
                   style={{ border: '2px solid var(--accent-primary)' }}>
                   <img
-                    src="/images/exp1_sampling_b_d/flux/B_occupation/B01_EastAsian_Male_50s_success.png"
+                    src="/examples/edited-example-a.png"
                     alt="Edited image example A"
                     className="w-full h-full object-cover"
                   />
@@ -126,7 +126,7 @@ export default function GuidePage() {
                 <div className="aspect-square rounded-lg overflow-hidden"
                   style={{ border: '2px solid var(--border-default)' }}>
                   <img
-                    src="/images/exp2_preserved/flux/B01_EastAsian_Male_50s.png"
+                    src="/examples/edited-example-b.png"
                     alt="Edited image example B"
                     className="w-full h-full object-cover"
                   />
