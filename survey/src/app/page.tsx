@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase'
 import { doc, getDoc, getDocs, collection } from 'firebase/firestore'
 import { normalizeProlificSession, storeProlificSession, readProlificSession } from '@/lib/prolific'
 import { AMT_UNIFIED_CONFIG } from '@/lib/types'
+import { trackPageView } from '@/lib/analytics'
 
 // Skeleton loader component
 function SkeletonLoader() {
