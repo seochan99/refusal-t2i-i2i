@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { trackPageView, trackEvaluationStart, trackEvaluationComplete } from '@/lib/analytics'
 import { db, COLLECTIONS } from '@/lib/firebase'
 import { collection, doc, setDoc, getDocs, getDoc, query, where, serverTimestamp } from 'firebase/firestore'
 import { MODELS_EXP2, CATEGORIES } from '@/lib/types'
@@ -152,14 +151,6 @@ function Exp2Content() {
       router.push('/')
     }
   }, [user, loading, router])
-
-  // Track page view and evaluation start
-  useEffect(() => {
-    if (user && model) {
-      trackPageView('eval_exp2', { model, hit_mode: isHitMode, hit_id: hitId })
-      trackEvaluationStart('exp2', model)
-    }
-  }, [user, model, isHitMode, hitId])
 
   // Update URL when index changes
   useEffect(() => {
@@ -500,12 +491,10 @@ function Exp2Content() {
   if (items.length > 0 && completedIds.size === items.length) {
     if (isHitMode) {
       // In HIT mode, redirect with HIT info
-      trackEvaluationComplete('exp2', model, Date.now() - itemStartTime, items.length)
-      if (isHitMode) {
-        router.push(`/complete?exp=exp2&hitId=${hitId}&workerId=${hitWorkerId}&completed=${completedIds.size}`)
-      } else {
-        router.push(`/complete?exp=exp2&model=${model}&completed=${completedIds.size}`)
-      }
+      router.push(`/complete?exp=exp2&hitId=${hitId}&workerId=${hitWorkerId}&completed=${completedIds.size}`)
+    } else {
+      router.push(`/complete?exp=exp2&model=${model}&completed=${completedIds.size}`)
+    }
     return null
   }
 
