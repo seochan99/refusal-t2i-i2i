@@ -14,10 +14,23 @@
 
 const admin = require('firebase-admin');
 
-// Firebase Admin SDK initialization (using Application Default Credentials)
-admin.initializeApp({
-  projectId: 'ecb-human-survey'
-});
+// Firebase Admin SDK initialization
+// Option 1: Use service account file (set GOOGLE_APPLICATION_CREDENTIALS env var)
+// Option 2: Pass service account path as argument: node init_task_slots.js /path/to/serviceAccount.json
+const serviceAccountPath = process.argv[2] || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+if (serviceAccountPath) {
+  const serviceAccount = require(serviceAccountPath);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: serviceAccount.project_id || 'acrb-e8cb4'
+  });
+} else {
+  // Fallback to Application Default Credentials
+  admin.initializeApp({
+    projectId: 'acrb-e8cb4'
+  });
+}
 
 const db = admin.firestore();
 
@@ -53,21 +66,54 @@ async function initTaskSlots() {
       console.log('\n--force flag detected. Reinitializing all slots...\n');
     }
 
+    // First, get existing completions from amt_task_completions
+    console.log('📋 Checking existing task completions...');
+    const completionsSnapshot = await db.collection('amt_task_completions').get();
+    const completionsByTask = new Map(); // taskId -> [userId1, userId2, ...]
+
+    completionsSnapshot.forEach(doc => {
+      const data = doc.data();
+      const taskId = data.taskId;
+      const userId = data.userId;
+      if (taskId && userId) {
+        if (!completionsByTask.has(taskId)) {
+          completionsByTask.set(taskId, []);
+        }
+        const users = completionsByTask.get(taskId);
+        if (!users.includes(userId)) {
+          users.push(userId);
+        }
+      }
+    });
+
+    console.log('Existing completions:');
+    completionsByTask.forEach((users, taskId) => {
+      console.log(`  Task ${taskId}: ${users.length} completions`);
+    });
+    console.log('');
+
     // Use batched writes for atomicity
     const batch = db.batch();
     let slotCount = 0;
 
     for (let taskId = 1; taskId <= TOTAL_TASKS; taskId++) {
+      const completedUsers = completionsByTask.get(taskId) || [];
+
       for (let slotNum = 1; slotNum <= SLOTS_PER_TASK; slotNum++) {
         const docId = `task_${taskId}_slot_${slotNum}`;
         const docRef = db.collection('amt_task_slots').doc(docId);
 
+        // Check if this slot should be marked as completed
+        const slotIndex = slotNum - 1;
+        const isCompleted = slotIndex < completedUsers.length;
+        const claimedBy = isCompleted ? completedUsers[slotIndex] : null;
+
         batch.set(docRef, {
           taskId: taskId,
           slotNum: slotNum,
-          claimedBy: null,        // null = available, string = user UID
-          claimedAt: null,        // Timestamp when claimed
-          status: 'available'     // 'available' | 'in_progress' | 'completed'
+          claimedBy: claimedBy,
+          claimedAt: isCompleted ? admin.firestore.FieldValue.serverTimestamp() : null,
+          status: isCompleted ? 'completed' : 'available'
         });
 
         slotCount++;
@@ -79,26 +125,36 @@ async function initTaskSlots() {
 
     // Verify creation
     const verifySnapshot = await db.collection('amt_task_slots').get();
-    console.log(`📊 Verification: ${verifySnapshot.size} documents in amt_task_slots\n`);
+    const finalStats = { available: 0, in_progress: 0, completed: 0 };
+    verifySnapshot.forEach(doc => {
+      const data = doc.data();
+      finalStats[data.status] = (finalStats[data.status] || 0) + 1;
+    });
 
-    // Print slot summary
-    console.log('Slot Structure:');
-    console.log('┌──────────┬────────┬───────────┬───────────┬──────────┐');
-    console.log('│ Task ID  │ Slot # │ Status    │ ClaimedBy │ ClaimedAt│');
-    console.log('├──────────┼────────┼───────────┼───────────┼──────────┤');
+    console.log(`📊 Final slot status:`);
+    console.log(`  - Available: ${finalStats.available}`);
+    console.log(`  - In Progress: ${finalStats.in_progress}`);
+    console.log(`  - Completed: ${finalStats.completed}\n`);
+
+    // Print slot summary for first few tasks
+    console.log('Slot Structure (first 3 tasks):');
+    console.log('┌──────────┬────────┬───────────┬─────────────────────────┐');
+    console.log('│ Task ID  │ Slot # │ Status    │ ClaimedBy               │');
+    console.log('├──────────┼────────┼───────────┼─────────────────────────┤');
 
     for (let taskId = 1; taskId <= Math.min(3, TOTAL_TASKS); taskId++) {
       for (let slotNum = 1; slotNum <= SLOTS_PER_TASK; slotNum++) {
         const docId = `task_${taskId}_slot_${slotNum}`;
         const doc = await db.collection('amt_task_slots').doc(docId).get();
         const data = doc.data();
-        console.log(`│ ${String(taskId).padStart(8)} │ ${String(slotNum).padStart(6)} │ ${data.status.padEnd(9)} │ ${(data.claimedBy || '-').slice(0, 9).padEnd(9)} │ ${(data.claimedAt || '-').toString().slice(0, 8).padEnd(8)} │`);
+        const claimedBy = data.claimedBy ? data.claimedBy.slice(0, 23) : '-';
+        console.log(`│ ${String(taskId).padStart(8)} │ ${String(slotNum).padStart(6)} │ ${data.status.padEnd(9)} │ ${claimedBy.padEnd(23)} │`);
       }
     }
     if (TOTAL_TASKS > 3) {
-      console.log('│   ...    │  ...   │    ...    │    ...    │   ...    │');
+      console.log('│   ...    │  ...   │    ...    │          ...            │');
     }
-    console.log('└──────────┴────────┴───────────┴───────────┴──────────┘');
+    console.log('└──────────┴────────┴───────────┴─────────────────────────┘');
 
     console.log('\n✨ Initialization complete!');
     console.log('\nNext steps:');
