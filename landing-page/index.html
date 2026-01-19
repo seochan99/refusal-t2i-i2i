@@ -37,8 +37,8 @@
             Race-Conditioned Refusal Bias in Image-to-Image Editing Models
           </h1>
           <p class="hero-description">
-            The first systematic audit revealing 2.3× higher refusal rates for
-            Black faces in professional contexts
+            The first systematic audit revealing race-conditioned refusal bias
+            and gender stereotype reinforcement in AI image editing models
           </p>
           <div class="hero-actions">
             <a href="#" class="btn btn-primary">Read Paper</a>
@@ -46,16 +46,16 @@
           </div>
           <div class="hero-stats">
             <div class="stat">
-              <div class="stat-number">13,608</div>
-              <div class="stat-label">Requests</div>
+              <div class="stat-number">13,708</div>
+              <div class="stat-label">Total Requests</div>
             </div>
             <div class="stat">
               <div class="stat-number">2.3×</div>
-              <div class="stat-label">Disparity</div>
+              <div class="stat-label">Racial Bias</div>
             </div>
             <div class="stat">
-              <div class="stat-number">3.7×</div>
-              <div class="stat-label">Gatekeeping</div>
+              <div class="stat-number">85%</div>
+              <div class="stat-label">Gender Stereotypes</div>
             </div>
           </div>
         </div>
@@ -66,7 +66,7 @@
       <div class="container">
         <h2 class="section-title">Abstract</h2>
         <p class="abstract-text">
-          Image-to-Image (I2I) editing models process billions of requests monthly, yet their safety mechanisms may impose disparate impact based on source image demographics. We present the first systematic audit of <strong>race-conditioned bias</strong> in I2I editing, evaluating three models across 13,608 requests (84 demographically balanced images × 54 prompts × 3 models). We identify three bias modalities: <em>hard refusal</em>, <em>soft erasure</em>, and a novel <em>stereotype replacement</em> where models transform subject demographics toward stereotypes while appearing to succeed. Key findings: professional roles refused 2.3× more for Black faces (18.7% vs. 8.1% White); cross-cultural attire refused 3.7× more than stereotype-congruent requests; and 11.3% of occupational edits exhibit racial drift toward White. These patterns persist in benign contexts, indicating over-alignment rather than legitimate safety. We release our benchmark and VLM-based evaluation framework to support bias auditing.
+          Image-to-Image (I2I) editing models process billions of requests monthly, yet their safety mechanisms and generation behaviors may impose disparate impact based on source image demographics. We present the first systematic audit of <strong>race-conditioned bias</strong> and <strong>gender stereotype reinforcement</strong> in I2I editing, evaluating three models across 13,708 total requests. Our comprehensive framework identifies four bias modalities: <em>hard refusal</em>, <em>soft erasure</em>, <em>stereotype replacement</em>, and <em>gender stereotyping</em>. Key findings: professional roles refused 2.3× more for Black faces (18.7% vs. 8.1% White); cross-cultural attire refused 3.7× more than stereotype-congruent requests; 11.3% of occupational edits exhibit racial drift toward White; and gender stereotype prompts show 84-86% adherence across models. These patterns persist in benign contexts, indicating systematic bias rather than legitimate safety measures. We release our comprehensive benchmark and VLM-based evaluation framework to support bias auditing in generative AI.
         </p>
       </div>
     </section>
@@ -74,14 +74,14 @@
     <section id="findings" class="section">
       <div class="container">
         <h2 class="section-title">Key Findings</h2>
-        <div class="grid-3">
+        <div class="grid-2">
           <div class="card">
             <div class="card-icon">
               <!-- Simple SVG Icon representing Occupation -->
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9m1 10h-6m-9 0h2m-2-10h2m16 0h2m-2 10h2M4 7h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/></svg>
             </div>
-            <h3>Occupational Bias</h3>
-            <div class="stat-highlight">2.3× Disparity</div>
+            <h3>Racial Bias in Refusals</h3>
+            <div class="stat-highlight">2.3× Higher for Black Faces</div>
             <p>Professional role prompts (e.g., "doctor", "executive") are refused at markedly higher rates for Black and Latino faces compared to White faces (18.7% vs 8.1%).</p>
           </div>
           <div class="card">
@@ -104,12 +104,12 @@
           </div>
           <div class="card">
             <div class="card-icon">
-               <!-- Icon for Stereotype Replacement -->
-               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+               <!-- Icon for Gender Stereotypes -->
+               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/><path d="M12 12v4"/><path d="M8 16h8"/></svg>
             </div>
-            <h3>Stereotype Replacement</h3>
-            <div class="stat-highlight">11.3% Racial Drift</div>
-            <p>Models transform subject demographics to match stereotypes—e.g., "whitening" non-White faces in professional roles or feminizing male bodies in domestic contexts.</p>
+            <h3>Gender Stereotype Reinforcement</h3>
+            <div class="stat-highlight">84-86% Adherence</div>
+            <p>AI models follow gender stereotypes in 84-86% of cases when assigning male-stereotyped occupations (e.g., assigning "janitor" role to male-presenting individuals).</p>
           </div>
         </div>
       </div>
@@ -132,15 +132,15 @@
            <div class="fv-step">
               <div class="fv-box">
                  <span class="fv-label">II. Prompts</span>
-                 <strong>54 Edits</strong>
-                 <small>5 Bias Categories</small>
+                 <strong>104 Total</strong>
+                 <small>Race + Gender Bias</small>
               </div>
            </div>
            <div class="fv-arrow">→</div>
            <div class="fv-step">
-              <div class="fv-box error-border">
+              <div class="fv-box">
                  <span class="fv-label">III. Models</span>
-                 <strong>I2I Models</strong>
+                 <strong>3 I2I Models</strong>
                  <small>FLUX, Step1X, Qwen</small>
               </div>
            </div>
@@ -148,8 +148,8 @@
            <div class="fv-step">
               <div class="fv-box">
                  <span class="fv-label">IV. Evaluation</span>
-                 <strong>Tri-Modal</strong>
-                 <small>Refusal, Erasure, Drift</small>
+                 <strong>4 Experiments</strong>
+                 <small>Refusal, Erasure, Drift, Stereotypes</small>
               </div>
            </div>
         </div>
