@@ -769,13 +769,13 @@ function AmtEvalContent() {
         onClick={() => !disabled && setActiveQuestion(qNum)}
       >
         <div className="flex items-center justify-between mb-0.5">
-          <h3 className="font-bold flex items-center gap-1" style={{ color: 'var(--text-primary)', fontSize: '0.6rem' }}>
+          <h3 className="font-bold flex items-center gap-1" style={{ color: 'var(--text-primary)', fontSize: '0.75rem' }}>
             <span
-              className="w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold flex-shrink-0"
+              className="w-4 h-4 rounded-full flex items-center justify-center font-bold flex-shrink-0"
               style={{
                 backgroundColor: isActive ? 'var(--accent-primary)' : hasValue ? 'var(--success-text)' : 'var(--bg-tertiary)',
                 color: isActive || hasValue ? 'var(--bg-primary)' : 'var(--text-muted)',
-                fontSize: '0.5rem'
+                fontSize: '0.6rem'
               }}
             >
               {qNum}
@@ -792,7 +792,7 @@ function AmtEvalContent() {
                 key={score}
                 onClick={(e) => { e.stopPropagation(); !disabled && setValue(score) }}
                 disabled={disabled}
-                className="py-0.5 px-0 rounded font-semibold transition-all"
+                className="py-1 px-0.5 rounded font-semibold transition-all"
                 style={{
                   backgroundColor: value === score ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
                   border: `1px solid ${value === score ? 'var(--accent-primary)' : 'var(--border-default)'}`,
@@ -800,8 +800,8 @@ function AmtEvalContent() {
                 }}
                 title={label.replace('\n', ' ')}
               >
-                <div className="font-bold" style={{ fontSize: '0.65rem' }}>{score}</div>
-                <div className="leading-tight truncate" style={{ fontSize: '0.35rem' }}>{mainLabel}</div>
+                <div className="font-bold" style={{ fontSize: '0.7rem' }}>{score}</div>
+                <div className="leading-tight truncate" style={{ fontSize: '0.5rem' }}>{mainLabel}</div>
               </button>
             )
           })}
