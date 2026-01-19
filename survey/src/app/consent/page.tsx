@@ -160,7 +160,7 @@ function ConsentContent() {
         </div>
 
         {/* Quick Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="panel p-4 text-center">
             <div className="text-2xl mb-1">15-20</div>
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Minutes</div>
@@ -169,123 +169,112 @@ function ConsentContent() {
             <div className="text-2xl mb-1">50</div>
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Items</div>
           </div>
-          <div className="panel p-4 text-center">
-            <div className="text-2xl mb-1">$3</div>
-            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Payment</div>
-          </div>
-          <div className="panel p-4 text-center">
-            <div className="text-2xl mb-1" style={{ color: 'var(--success-text)' }}>Low</div>
-            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Risk</div>
-          </div>
         </div>
 
         {/* Main Content */}
         <div className="panel-elevated p-6 mb-6">
-          {/* Study Overview */}
+          {/* Consent Form Title */}
           <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <h2 className="font-semibold text-lg mb-3" style={{ color: 'var(--text-primary)' }}>
-              What is this study about?
+            <h2 className="font-bold text-lg mb-4" style={{ color: 'var(--text-primary)' }}>
+              Consent Form for Evaluating AI-Generated Image Edits
             </h2>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              You will evaluate AI-generated image edits by answering questions about image quality,
-              identity preservation, and potential biases. Your responses will help improve fairness in AI systems.
+            <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--text-secondary)' }}>
+              You are being asked to participate in a research study being conducted by the{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>Bot Intelligence Group at Carnegie Mellon University</strong>.
+            </p>
+            <p className="text-sm font-semibold" style={{ color: 'var(--accent-primary)' }}>
+              Participation is voluntary.
             </p>
           </div>
 
-          {/* What You&apos;ll Do */}
+          {/* Purpose */}
           <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <h2 className="font-semibold text-lg mb-3" style={{ color: 'var(--text-primary)' }}>
-              What will I do?
-            </h2>
-            <div className="grid md:grid-cols-3 gap-3 text-sm">
+            <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+              Purpose of the Study
+            </h3>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              The purpose of this study is to understand ways to evaluate bias in AI-generated image edits.
+              Any reports and presentations about the findings from this study will not include your name
+              or any other information that could identify you.
+            </p>
+          </div>
+
+          {/* What You&apos;ll Be Asked */}
+          <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+              What You Will Be Asked
+            </h3>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+              You will be asked the following questions per image:
+            </p>
+            <div className="space-y-3 text-sm">
               <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>1. View Images</div>
-                <p style={{ color: 'var(--text-muted)' }}>Compare source and AI-edited images</p>
+                <div className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Text and Image Alignment</div>
+                <p style={{ color: 'var(--text-muted)' }}>
+                  Given a prompt, evaluate whether the AI-edited image matches the requested edit.
+                </p>
               </div>
               <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>2. Answer Questions</div>
-                <p style={{ color: 'var(--text-muted)' }}>Rate edit quality and identity changes</p>
+                <div className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Identity Preservation</div>
+                <p style={{ color: 'var(--text-muted)' }}>
+                  Evaluate whether the person&apos;s identity (skin tone, race, gender, age) was preserved after the edit.
+                </p>
               </div>
               <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>3. Get Paid</div>
-                <p style={{ color: 'var(--text-muted)' }}>Receive payment via Prolific</p>
+                <div className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Unintended Changes</div>
+                <p style={{ color: 'var(--text-muted)' }}>
+                  Identify any unintended changes to the person&apos;s appearance that occurred during the edit.
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Key Points */}
+          {/* Confidentiality */}
           <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <h2 className="font-semibold text-lg mb-3" style={{ color: 'var(--text-primary)' }}>
-              Key Points
-            </h2>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-start gap-2">
-                <span style={{ color: 'var(--success-text)' }}>&#10003;</span>
-                <span style={{ color: 'var(--text-secondary)' }}><strong>Voluntary:</strong> You can stop at any time</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span style={{ color: 'var(--success-text)' }}>&#10003;</span>
-                <span style={{ color: 'var(--text-secondary)' }}><strong>Anonymous:</strong> No identifying info is stored with responses</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span style={{ color: 'var(--success-text)' }}>&#10003;</span>
-                <span style={{ color: 'var(--text-secondary)' }}><strong>Low Risk:</strong> Standard computer/internet use only</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span style={{ color: 'var(--success-text)' }}>&#10003;</span>
-                <span style={{ color: 'var(--text-secondary)' }}><strong>IRB Approved:</strong> STUDY2022_00000005 (Exempt Cat. 2 &amp; 3)</span>
-              </li>
-            </ul>
+            <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+              Confidentiality
+            </h3>
+            <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--text-secondary)' }}>
+              Your Prolific Participant ID will be used to distribute the payment to you,
+              but we will not store your participant ID with your survey responses.
+            </p>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Please be aware that your Prolific Participant ID can potentially be linked to
+              information about you on your Prolific profile, however we will not access any
+              personally identifying information. The ID information will be removed from
+              the data and deleted completely.
+            </p>
           </div>
 
-          {/* Detailed Information (Collapsible) */}
-          <details className="mb-6">
-            <summary className="cursor-pointer font-semibold text-sm py-2" style={{ color: 'var(--accent-primary)' }}>
-              View Full Consent Details
-            </summary>
-            <div className="mt-4 p-4 rounded-lg text-sm leading-relaxed space-y-4" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-              <div>
-                <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Purpose</h4>
-                <p>
-                  The goal of this study is to get human evaluation on the quality of AI generated artifacts.
-                  The research questions include whether the quality of output by one algorithm is better than another,
-                  and to understand ways to evaluate bias in AI-generated images.
-                </p>
-              </div>
+          {/* Contact */}
+          <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+              Contact Information
+            </h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              If you have questions about the research, you can email the research team at:{' '}
+              <a href="mailto:chans@andrew.cmu.edu" style={{ color: 'var(--accent-primary)' }}>
+                chans@andrew.cmu.edu
+              </a>
+            </p>
+          </div>
 
-              <div>
-                <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Confidentiality</h4>
-                <p>
-                  Any reports and presentations about the findings from this study will not include your name or any other
-                  information that could identify you. Your Prolific Participant ID will be used only for payment distribution
-                  and will be removed from the data completely.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Risks and Benefits</h4>
-                <p>
-                  There are no risks beyond normal computer use. You will learn about cutting-edge AI image generation
-                  and your participation will contribute to improving fairness in AI systems.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Contact</h4>
-                <p>
-                  Questions? Email: <span style={{ color: 'var(--accent-primary)' }}>chans@andrew.cmu.edu</span>
-                </p>
-              </div>
-
-              <div className="p-3 rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  <strong>IRB Protocol:</strong> STUDY2022_00000005<br/>
-                  <strong>Study:</strong> Evaluation of AI generated behaviors and artifacts<br/>
-                  <strong>PI:</strong> Jean Oh, Carnegie Mellon University
-                </p>
-              </div>
+          {/* IRB Info */}
+          <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="text-xs space-y-1" style={{ color: 'var(--text-muted)' }}>
+              <p><strong style={{ color: 'var(--text-secondary)' }}>IRB Protocol Number:</strong> STUDY2022_00000005</p>
+              <p><strong style={{ color: 'var(--text-secondary)' }}>Study Title:</strong> Evaluation of AI generated behaviors and artifacts</p>
+              <p><strong style={{ color: 'var(--text-secondary)' }}>Principal Investigator:</strong> Jean Oh, Carnegie Mellon University</p>
+              <p><strong style={{ color: 'var(--text-secondary)' }}>Exempt Category:</strong> Category 2 &amp; 3</p>
             </div>
-          </details>
+          </div>
+
+          {/* Agreement Notice */}
+          <div className="p-4 rounded-lg mb-4" style={{ backgroundColor: 'var(--info-bg)', border: '1px solid var(--info-text)' }}>
+            <p className="text-sm" style={{ color: 'var(--info-text)' }}>
+              By submitting answers to this survey, you are agreeing to participate in this study.
+            </p>
+          </div>
 
           {/* Consent Checkbox */}
           <label className="flex items-start gap-4 p-4 rounded-lg cursor-pointer transition-all"
@@ -305,8 +294,8 @@ function ConsentContent() {
               }}
             />
             <span className="text-sm leading-relaxed" style={{ color: agreed ? 'var(--success-text)' : 'var(--text-secondary)' }}>
-              <strong>I agree to participate.</strong> I have read and understood the information above.
-              I am 18 years of age or older and provide my informed consent.
+              I have read and understood the information above. I am 18 years of age or older,
+              and I agree to participate in this research study.
             </span>
           </label>
         </div>
