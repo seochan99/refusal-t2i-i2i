@@ -1,17 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { db } from '@/lib/firebase'
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { readProlificSession } from '@/lib/prolific'
 
-/**
- * IRB Consent page
- * Shown AFTER login, before experiment selection
- */
-export default function ConsentPage() {
+function ConsentContent() {
   const { user, loading, logout } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [agreed, setAgreed] = useState(false)
+  const [checkingConsent, setCheckingConsent] = useState(true)
+  const isReviewMode = searchParams.get('review') === '1' || searchParams.get('review') === 'true'
+
+  // Check if this is a Prolific participant
+  const prolificSession = useMemo(() => readProlificSession(), [])
+  const isProlific = Boolean(prolificSession?.prolificPid) || user?.isAnonymous
 
   // Redirect to login if not authenticated (check first)
   useEffect(() => {
@@ -23,22 +29,93 @@ export default function ConsentPage() {
     }
   }, [user, loading, router])
 
-  // Check if user already consented (only if authenticated)
+  // Check if user already consented (Firebase + localStorage)
   useEffect(() => {
-    if (loading || !user) return
-    
-    const consent = localStorage.getItem('irb_consent_i2i_bias')
-    if (consent === 'agreed' && window.location.pathname === '/consent') {
-      router.push('/amt')
-    }
-  }, [user, loading, router])
+    async function checkConsent() {
+      if (loading || !user) {
+        setCheckingConsent(false)
+        return
+      }
 
-  const handleConsent = () => {
-    localStorage.setItem('irb_consent_i2i_bias', 'agreed')
-    router.push('/amt')
+      try {
+        // Check Firebase first (authoritative source)
+        const userDoc = await getDoc(doc(db, 'users', user.uid))
+        if (userDoc.exists()) {
+          const data = userDoc.data()
+          if (data.irbConsent === true) {
+            // Also update localStorage for quick checks
+            localStorage.setItem('irb_consent_i2i_bias', 'agreed')
+            setAgreed(true)
+            if (!isReviewMode && window.location.pathname === '/consent') {
+              router.push('/tasks')
+              return
+            }
+            setCheckingConsent(false)
+            return
+          }
+        }
+
+        // Fallback to localStorage (for backward compatibility)
+        const localConsent = localStorage.getItem('irb_consent_i2i_bias')
+        if (localConsent === 'agreed') {
+          // Sync to Firebase
+          await setDoc(doc(db, 'users', user.uid), {
+            irbConsent: true,
+            irbConsentAt: serverTimestamp(),
+            email: user.email,
+            displayName: user.displayName,
+          }, { merge: true })
+
+          setAgreed(true)
+          if (!isReviewMode && window.location.pathname === '/consent') {
+            router.push('/tasks')
+            return
+          }
+          setCheckingConsent(false)
+          return
+        }
+      } catch (err) {
+        console.error('Error checking consent:', err)
+      }
+
+      setCheckingConsent(false)
+    }
+
+    checkConsent()
+  }, [user, loading, router, isReviewMode])
+
+  const handleConsent = async () => {
+    if (!user) return
+
+    try {
+      // Save consent to Firebase (per-user)
+      await setDoc(doc(db, 'users', user.uid), {
+        email: user.email || '',
+        displayName: user.displayName || (isProlific ? `Prolific_${prolificSession?.prolificPid?.slice(0, 8) || 'user'}` : ''),
+        photoURL: user.photoURL || '',
+        irbConsent: true,
+        irbConsentAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        // Include Prolific data if available
+        ...(prolificSession && {
+          prolificPid: prolificSession.prolificPid,
+          prolificStudyId: prolificSession.studyId,
+          prolificSessionId: prolificSession.sessionId,
+          authProvider: 'anonymous'
+        })
+      }, { merge: true })
+
+      // Also save to localStorage for quick checks
+      localStorage.setItem('irb_consent_i2i_bias', 'agreed')
+
+      router.push('/tasks')
+    } catch (err) {
+      console.error('Error saving consent:', err)
+      alert('Failed to save consent. Please try again.')
+    }
   }
 
-  if (loading || !user) {
+  if (loading || !user || checkingConsent) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="text-base" style={{ color: 'var(--text-muted)' }}>Loading...</div>
@@ -47,109 +124,224 @@ export default function ConsentPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <div className="max-w-3xl w-full panel-elevated p-10">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-semibold" style={{ color: 'var(--text-primary)' }}>Research Study Consent Form</h1>
+    <div className="min-h-screen p-4 md:p-8" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Research Consent</h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Carnegie Mellon University</p>
+          </div>
           <div className="flex items-center gap-3">
-            {user.photoURL && (
+            {user.photoURL ? (
               <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full" style={{ border: '1px solid var(--border-default)' }} />
+            ) : (
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>
+                {isProlific ? 'P' : (user.email?.charAt(0).toUpperCase() || 'U')}
+              </div>
             )}
             <div className="text-right">
-              <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{user.displayName}</div>
-              <button onClick={logout} className="text-xs transition-colors" style={{ color: 'var(--text-muted)' }}>
-                Sign out
-              </button>
+              <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                {user.displayName || (isProlific ? `Prolific: ${prolificSession?.prolificPid?.slice(0, 8)}...` : user.email?.split('@')[0] || 'User')}
+              </div>
+              {!isProlific && (
+                <button onClick={logout} className="text-xs transition-colors" style={{ color: 'var(--text-muted)' }}>
+                  Sign out
+                </button>
+              )}
+              {isProlific && (
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  via Prolific
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="panel p-8 mb-8 max-h-96 overflow-y-auto text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          <h2 className="font-bold text-lg mb-4">Study Information</h2>
-
-          <p className="mb-4">
-            You are being asked to participate in a research study being conducted by the
-            <strong> Bot Intelligence Group at Carnegie Mellon University</strong>.
-          </p>
-
-          <p className="mb-4 font-semibold">Participation is voluntary.</p>
-
-          <h3 className="font-bold mt-4 mb-2">Purpose</h3>
-          <p className="mb-4">
-            The purpose of this study is to understand ways to evaluate bias in AI-generated
-            images, specifically examining how image-to-image editing models handle requests
-            across different demographic groups.
-          </p>
-
-          <h3 className="font-bold mt-4 mb-2">What You Will Be Asked To Do</h3>
-          <ul className="list-disc pl-5 mb-4 space-y-2">
-            <li><strong>Text and Image Alignment:</strong> Evaluate whether AI-edited images match the requested edits.</li>
-            <li><strong>Identity Preservation:</strong> Assess whether the person&apos;s identity is maintained after editing.</li>
-            <li><strong>Stereotype Detection:</strong> Identify if images reflect occupational or gender stereotypes.</li>
-          </ul>
-
-          <h3 className="font-bold mt-4 mb-2">Confidentiality</h3>
-          <p className="mb-4">
-            Any reports and presentations about the findings from this study will not include
-            your name or any other information that could identify you. Your responses will be
-            anonymized and used only for research purposes.
-          </p>
-
-          <h3 className="font-bold mt-4 mb-2">Time Commitment</h3>
-          <p className="mb-4">
-            Each evaluation session takes approximately 15-30 minutes depending on the
-            experiment type selected.
-          </p>
-
-          <h3 className="font-bold mt-4 mb-2">Risk and Benefits</h3>
-          <p className="mb-4">
-            This study involves minimal risk. Some images may contain AI-generated content
-            that could be perceived as biased or stereotypical, as this is the focus of our
-            research. Your participation will contribute to improving fairness in AI systems.
-          </p>
-
-          <h3 className="font-bold mt-4 mb-2">Contact Information</h3>
-          <p className="mb-4">
-            If you have questions about this research, please contact the research team at
-            the Bot Intelligence Group, Carnegie Mellon University.
-          </p>
-
-          <div className="panel p-4 mt-6" style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border-strong)' }}>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              <strong style={{ color: 'var(--text-secondary)' }}>IRB Protocol:</strong> STUDY2022_00000005<br/>
-              <strong style={{ color: 'var(--text-secondary)' }}>Title:</strong> Evaluation of AI generated behaviors and artifacts<br/>
-              <strong style={{ color: 'var(--text-secondary)' }}>Category:</strong> Exempt Category 2/3
-            </p>
+        {/* Quick Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="panel p-4 text-center">
+            <div className="text-2xl mb-1">15-20</div>
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Minutes</div>
+          </div>
+          <div className="panel p-4 text-center">
+            <div className="text-2xl mb-1">50</div>
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Items</div>
+          </div>
+          <div className="panel p-4 text-center">
+            <div className="text-2xl mb-1">$3</div>
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Payment</div>
+          </div>
+          <div className="panel p-4 text-center">
+            <div className="text-2xl mb-1" style={{ color: 'var(--success-text)' }}>Low</div>
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Risk</div>
           </div>
         </div>
 
-        <label className="flex items-start gap-4 mb-8 cursor-pointer group">
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-1 w-5 h-5 rounded border-2 focus:ring-2 focus:ring-offset-2 transition-all"
-            style={{
-              borderColor: agreed ? 'var(--accent-primary)' : 'var(--border-default)',
-              backgroundColor: agreed ? 'var(--accent-primary)' : 'transparent',
-              accentColor: 'var(--accent-primary)'
-            }}
-          />
-          <span className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            I have read and understood the information above. I am 18 years of age or older,
-            and I agree to participate in this research study. By checking this box and
-            proceeding, I am providing my informed consent.
-          </span>
-        </label>
+        {/* Main Content */}
+        <div className="panel-elevated p-6 mb-6">
+          {/* Study Overview */}
+          <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <h2 className="font-semibold text-lg mb-3" style={{ color: 'var(--text-primary)' }}>
+              What is this study about?
+            </h2>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              You will evaluate AI-generated image edits by answering questions about image quality,
+              identity preservation, and potential biases. Your responses will help improve fairness in AI systems.
+            </p>
+          </div>
 
+          {/* What You&apos;ll Do */}
+          <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <h2 className="font-semibold text-lg mb-3" style={{ color: 'var(--text-primary)' }}>
+              What will I do?
+            </h2>
+            <div className="grid md:grid-cols-3 gap-3 text-sm">
+              <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>1. View Images</div>
+                <p style={{ color: 'var(--text-muted)' }}>Compare source and AI-edited images</p>
+              </div>
+              <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>2. Answer Questions</div>
+                <p style={{ color: 'var(--text-muted)' }}>Rate edit quality and identity changes</p>
+              </div>
+              <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>3. Get Paid</div>
+                <p style={{ color: 'var(--text-muted)' }}>Receive payment via Prolific</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Key Points */}
+          <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <h2 className="font-semibold text-lg mb-3" style={{ color: 'var(--text-primary)' }}>
+              Key Points
+            </h2>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start gap-2">
+                <span style={{ color: 'var(--success-text)' }}>&#10003;</span>
+                <span style={{ color: 'var(--text-secondary)' }}><strong>Voluntary:</strong> You can stop at any time</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span style={{ color: 'var(--success-text)' }}>&#10003;</span>
+                <span style={{ color: 'var(--text-secondary)' }}><strong>Anonymous:</strong> No identifying info is stored with responses</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span style={{ color: 'var(--success-text)' }}>&#10003;</span>
+                <span style={{ color: 'var(--text-secondary)' }}><strong>Low Risk:</strong> Standard computer/internet use only</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span style={{ color: 'var(--success-text)' }}>&#10003;</span>
+                <span style={{ color: 'var(--text-secondary)' }}><strong>IRB Approved:</strong> STUDY2022_00000005 (Exempt Cat. 2 &amp; 3)</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Detailed Information (Collapsible) */}
+          <details className="mb-6">
+            <summary className="cursor-pointer font-semibold text-sm py-2" style={{ color: 'var(--accent-primary)' }}>
+              View Full Consent Details
+            </summary>
+            <div className="mt-4 p-4 rounded-lg text-sm leading-relaxed space-y-4" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+              <div>
+                <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Purpose</h4>
+                <p>
+                  The goal of this study is to get human evaluation on the quality of AI generated artifacts.
+                  The research questions include whether the quality of output by one algorithm is better than another,
+                  and to understand ways to evaluate bias in AI-generated images.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Confidentiality</h4>
+                <p>
+                  Any reports and presentations about the findings from this study will not include your name or any other
+                  information that could identify you. Your Prolific Participant ID will be used only for payment distribution
+                  and will be removed from the data completely.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Risks and Benefits</h4>
+                <p>
+                  There are no risks beyond normal computer use. You will learn about cutting-edge AI image generation
+                  and your participation will contribute to improving fairness in AI systems.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Contact</h4>
+                <p>
+                  Questions? Email: <span style={{ color: 'var(--accent-primary)' }}>chans@andrew.cmu.edu</span>
+                </p>
+              </div>
+
+              <div className="p-3 rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <strong>IRB Protocol:</strong> STUDY2022_00000005<br/>
+                  <strong>Study:</strong> Evaluation of AI generated behaviors and artifacts<br/>
+                  <strong>PI:</strong> Jean Oh, Carnegie Mellon University
+                </p>
+              </div>
+            </div>
+          </details>
+
+          {/* Consent Checkbox */}
+          <label className="flex items-start gap-4 p-4 rounded-lg cursor-pointer transition-all"
+            style={{
+              backgroundColor: agreed ? 'var(--success-bg)' : 'var(--bg-secondary)',
+              border: agreed ? '2px solid var(--success-text)' : '2px solid transparent'
+            }}>
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5 w-5 h-5 rounded border-2 focus:ring-2 focus:ring-offset-2 transition-all flex-shrink-0"
+              style={{
+                borderColor: agreed ? 'var(--success-text)' : 'var(--border-default)',
+                backgroundColor: agreed ? 'var(--success-text)' : 'transparent',
+                accentColor: 'var(--success-text)'
+              }}
+            />
+            <span className="text-sm leading-relaxed" style={{ color: agreed ? 'var(--success-text)' : 'var(--text-secondary)' }}>
+              <strong>I agree to participate.</strong> I have read and understood the information above.
+              I am 18 years of age or older and provide my informed consent.
+            </span>
+          </label>
+        </div>
+
+        {/* Action Button */}
         <button
           onClick={handleConsent}
           disabled={!agreed}
           className="btn btn-primary w-full py-4 text-base font-semibold"
         >
-          Continue to Study
+          {agreed ? 'Start Evaluation' : 'Please agree to continue'}
         </button>
+
+        {/* Footer Info */}
+        <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
+          Bot Intelligence Group &middot; Carnegie Mellon University
+        </p>
       </div>
     </div>
+  )
+}
+
+/**
+ * IRB Consent page
+ * Shown AFTER login, before experiment selection
+ * Consent is stored per-user in Firebase (not just localStorage)
+ */
+export default function ConsentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="text-base" style={{ color: 'var(--text-muted)' }}>Loading...</div>
+      </div>
+    }>
+      <ConsentContent />
+    </Suspense>
   )
 }
