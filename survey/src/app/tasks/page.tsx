@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { trackPageView, trackEvent } from '@/lib/analytics'
 import { db } from '@/lib/firebase'
-import { doc, setDoc, getDoc, getDocs, collection, serverTimestamp, query, where, runTransaction, Timestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, getDocs, collection, serverTimestamp, query, where, runTransaction, Timestamp, updateDoc } from 'firebase/firestore'
 import { AMT_UNIFIED_CONFIG } from '@/lib/types'
 import { readProlificSession, getProlificCompletionUrl } from '@/lib/prolific'
 
@@ -22,17 +22,72 @@ interface TaskStatus {
 const SLOT_TIMEOUT_MS = 2 * 60 * 60 * 1000
 
 /**
+ * Check if user already has an in_progress slot (can only have one at a time)
+ */
+async function getUserInProgressSlot(userId: string): Promise<{ taskId: number; slotId: string } | null> {
+  const now = Date.now()
+  const allSlotsSnapshot = await getDocs(collection(db, 'amt_task_slots'))
+
+  for (const slotDoc of allSlotsSnapshot.docs) {
+    const data = slotDoc.data()
+    if (data.claimedBy === userId && data.status === 'in_progress') {
+      // Check if not timed out
+      if (data.claimedAt) {
+        const claimedTime = data.claimedAt instanceof Timestamp
+          ? data.claimedAt.toMillis()
+          : new Date(data.claimedAt).getTime()
+        if (now - claimedTime <= SLOT_TIMEOUT_MS) {
+          return { taskId: data.taskId, slotId: slotDoc.id }
+        }
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Release all in_progress slots for a user
+ */
+async function releaseUserSlots(userId: string): Promise<number> {
+  const allSlotsSnapshot = await getDocs(collection(db, 'amt_task_slots'))
+  let released = 0
+
+  for (const slotDoc of allSlotsSnapshot.docs) {
+    const data = slotDoc.data()
+    if (data.claimedBy === userId && data.status === 'in_progress') {
+      await updateDoc(slotDoc.ref, {
+        claimedBy: null,
+        claimedAt: null,
+        status: 'available'
+      })
+      released++
+    }
+  }
+  return released
+}
+
+/**
  * Atomically claim a task slot using Firestore Transaction.
  * This prevents race conditions where multiple users try to claim the same slot.
+ * A user can only have ONE in_progress slot at a time.
  *
  * @param taskId - The task ID to claim a slot for
  * @param userId - The user's UID
- * @returns true if slot was successfully claimed, false otherwise
+ * @returns { success: boolean, error?: string }
  */
-async function claimTaskSlot(taskId: number, userId: string): Promise<boolean> {
+async function claimTaskSlot(taskId: number, userId: string): Promise<{ success: boolean; error?: string }> {
   const now = Date.now()
 
   try {
+    // First check if user already has an in_progress slot
+    const existingSlot = await getUserInProgressSlot(userId)
+    if (existingSlot) {
+      return {
+        success: false,
+        error: `You already have Task ${existingSlot.taskId} in progress. Complete or abandon it first.`
+      }
+    }
+
     // Query for available or timed-out slots for this task
     const slotsQuery = query(
       collection(db, 'amt_task_slots'),
@@ -42,7 +97,7 @@ async function claimTaskSlot(taskId: number, userId: string): Promise<boolean> {
 
     if (slotsSnapshot.empty) {
       console.warn(`No slots found for task ${taskId}`)
-      return false
+      return { success: false, error: 'No slots found for this task' }
     }
 
     // Find an available or timed-out slot
@@ -72,7 +127,7 @@ async function claimTaskSlot(taskId: number, userId: string): Promise<boolean> {
 
     if (!targetSlotRef) {
       console.log(`No available slots for task ${taskId}`)
-      return false
+      return { success: false, error: 'This task is full. Please select another task.' }
     }
 
     // Atomic claim with transaction
@@ -104,10 +159,10 @@ async function claimTaskSlot(taskId: number, userId: string): Promise<boolean> {
     })
 
     console.log(`✅ Successfully claimed slot for task ${taskId}`)
-    return true
+    return { success: true }
   } catch (error) {
     console.error(`Failed to claim slot for task ${taskId}:`, error)
-    return false
+    return { success: false, error: 'Failed to claim slot. Please try again.' }
   }
 }
 
@@ -154,8 +209,10 @@ export default function AMTPage() {
 
   const [taskStatuses, setTaskStatuses] = useState<Map<number, TaskStatus>>(new Map())
   const [userCompletedTasks, setUserCompletedTasks] = useState<Set<number>>(new Set())
+  const [userInProgressTask, setUserInProgressTask] = useState<number | null>(null)
   const [isLoadingTasks, setIsLoadingTasks] = useState(true)
   const [isSelecting, setIsSelecting] = useState(false)
+  const [isAbandoning, setIsAbandoning] = useState(false)
   const [error, setError] = useState('')
   const [consentStatus, setConsentStatus] = useState<'loading' | 'agreed' | 'missing'>('loading')
   const [consentSource, setConsentSource] = useState<'firebase' | 'local' | 'none'>('none')
@@ -259,7 +316,9 @@ export default function AMTPage() {
           })
         }
 
-        // Process slots to calculate availability
+        // Process slots to calculate availability and find user's in_progress task
+        let userInProgress: number | null = null
+
         slotsSnapshot.forEach(docSnap => {
           const data = docSnap.data()
           const taskId = data.taskId as number
@@ -285,6 +344,11 @@ export default function AMTPage() {
             if (!isTimedOut) {
               status.inProgress++
               status.available--
+
+              // Check if this is current user's in_progress slot
+              if (data.claimedBy === user.uid) {
+                userInProgress = taskId
+              }
             }
             // Timed-out slots remain as available
           }
@@ -294,6 +358,7 @@ export default function AMTPage() {
         })
 
         setTaskStatuses(statusMap)
+        setUserInProgressTask(userInProgress)
 
         // Find which tasks current user has completed (from amt_task_completions)
         const completionsRef = collection(db, 'amt_task_completions')
@@ -365,16 +430,22 @@ export default function AMTPage() {
       return
     }
 
+    // Check if user already has an in_progress task
+    if (userInProgressTask && userInProgressTask !== taskId) {
+      setError(`You already have Task ${userInProgressTask} in progress. Complete or abandon it first.`)
+      return
+    }
+
     // Clear any previous error
     setError('')
     setIsSelecting(true)
 
     try {
       // Atomically claim a slot for this task
-      const claimed = await claimTaskSlot(taskId, user.uid)
+      const result = await claimTaskSlot(taskId, user.uid)
 
-      if (!claimed) {
-        setError('This task is full. Please select another task.')
+      if (!result.success) {
+        setError(result.error || 'This task is full. Please select another task.')
         // Reload task statuses to reflect the latest state
         setIsLoadingTasks(true)
         const slotsRef = collection(db, 'amt_task_slots')
@@ -430,6 +501,71 @@ export default function AMTPage() {
       setError('An error occurred. Please try again.')
     } finally {
       setIsSelecting(false)
+    }
+  }
+
+  // Handle abandoning current in_progress task
+  const handleAbandonTask = async () => {
+    if (!user || !userInProgressTask) return
+
+    setIsAbandoning(true)
+    setError('')
+
+    try {
+      const released = await releaseUserSlots(user.uid)
+      console.log(`✅ Released ${released} slot(s) for user`)
+
+      // Reload task statuses
+      setUserInProgressTask(null)
+
+      // Trigger a reload of task statuses
+      const slotsRef = collection(db, 'amt_task_slots')
+      const slotsSnapshot = await getDocs(slotsRef)
+      const now = Date.now()
+
+      const statusMap = new Map<number, TaskStatus>()
+      for (let i = 1; i <= AMT_UNIFIED_CONFIG.totalTasks; i++) {
+        statusMap.set(i, {
+          taskId: i,
+          completedUsers: [],
+          isLocked: false,
+          available: 3,
+          inProgress: 0,
+          completed: 0
+        })
+      }
+
+      slotsSnapshot.forEach(docSnap => {
+        const data = docSnap.data()
+        const taskId = data.taskId as number
+        const taskStatus = statusMap.get(taskId)
+        if (!taskStatus) return
+
+        if (data.status === 'completed') {
+          taskStatus.completed++
+          taskStatus.available--
+          if (data.claimedBy && !taskStatus.completedUsers.includes(data.claimedBy)) {
+            taskStatus.completedUsers.push(data.claimedBy)
+          }
+        } else if (data.status === 'in_progress') {
+          const claimedTime = data.claimedAt instanceof Timestamp
+            ? data.claimedAt.toMillis()
+            : data.claimedAt ? new Date(data.claimedAt).getTime() : 0
+          const isTimedOut = claimedTime && (now - claimedTime > SLOT_TIMEOUT_MS)
+          if (!isTimedOut) {
+            taskStatus.inProgress++
+            taskStatus.available--
+          }
+        }
+        taskStatus.isLocked = taskStatus.available <= 0
+      })
+
+      setTaskStatuses(statusMap)
+    } catch (err) {
+      console.error('Error abandoning task:', err)
+      setError('Failed to abandon task. Please try again.')
+    } finally {
+      setIsAbandoning(false)
     }
   }
 
@@ -659,6 +795,43 @@ export default function AMTPage() {
                 Finish on Prolific
               </button>
             )}
+          </div>
+        )}
+
+        {/* Current in-progress task banner */}
+        {userInProgressTask && (
+          <div className="mb-4 p-4 rounded-lg flex items-center justify-between" style={{ backgroundColor: 'var(--info-bg)', border: '1px solid var(--info-text)' }}>
+            <div>
+              <div className="text-xs uppercase tracking-wider mb-0.5" style={{ color: 'var(--info-text)' }}>
+                Task In Progress
+              </div>
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                You have Task {userInProgressTask} in progress
+              </div>
+              <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                Complete it or abandon to select a different task
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push(`/tasks/eval?taskId=${userInProgressTask}`)}
+                className="btn btn-primary px-4 py-2 text-sm"
+              >
+                Continue Task {userInProgressTask}
+              </button>
+              <button
+                onClick={handleAbandonTask}
+                disabled={isAbandoning}
+                className="px-4 py-2 text-sm rounded-lg transition-colors"
+                style={{
+                  backgroundColor: 'var(--error-bg)',
+                  color: 'var(--error-text)',
+                  border: '1px solid var(--error-text)'
+                }}
+              >
+                {isAbandoning ? 'Abandoning...' : 'Abandon'}
+              </button>
+            </div>
           </div>
         )}
 
