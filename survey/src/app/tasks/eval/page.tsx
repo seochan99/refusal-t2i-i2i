@@ -177,8 +177,25 @@ function AmtEvalContent() {
   const taskId = taskIdParam ? parseInt(taskIdParam) : null
   const isValidTask = taskId !== null && taskId > 0 && taskId <= AMT_UNIFIED_CONFIG.totalTasks
 
+  // Initialize currentIndex from localStorage if available (for page refresh)
+  const getInitialIndex = () => {
+    if (typeof window === 'undefined') return urlIndex
+    try {
+      const stored = localStorage.getItem('amt_eval_progress')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.taskId === taskId && parsed.index !== undefined) {
+          return parsed.index
+        }
+      }
+    } catch (e) {
+      console.error('Error reading localStorage:', e)
+    }
+    return urlIndex
+  }
+
   const [items, setItems] = useState<AmtItem[]>([])
-  const [currentIndex, setCurrentIndex] = useState(urlIndex)
+  const [currentIndex, setCurrentIndex] = useState(() => getInitialIndex())
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [storedEvaluations, setStoredEvaluations] = useState<Map<string, StoredEvaluation>>(new Map())
   const [itemStartTime, setItemStartTime] = useState<number>(0)
@@ -343,12 +360,17 @@ function AmtEvalContent() {
   }, [user, loading, router])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
     if (isValidTask && taskId) {
       const params = new URLSearchParams()
       params.set('taskId', taskId.toString())
       params.set('index', currentIndex.toString())
       router.replace(`/tasks/eval?${params.toString()}`, { scroll: false })
-      localStorage.setItem('amt_eval_progress', JSON.stringify({ taskId, index: currentIndex }))
+      try {
+        localStorage.setItem('amt_eval_progress', JSON.stringify({ taskId, index: currentIndex }))
+      } catch (e) {
+        console.error('Error saving to localStorage:', e)
+      }
     }
   }, [currentIndex, router, isValidTask, taskId])
 
@@ -626,7 +648,7 @@ function AmtEvalContent() {
       if (nextIncomplete >= 0) {
         setCurrentIndex(nextIncomplete)
       } else if (currentIndex < items.length - 1) {
-        setCurrentIndex(prev => prev + 1)
+        setCurrentIndex((prev: number) => prev + 1)
       }
     } catch (error) {
       console.error('Error saving evaluation:', error)
@@ -679,9 +701,9 @@ function AmtEvalContent() {
           setActiveQuestion(prev => Math.min(5, prev + 1) as 1 | 2 | 3 | 4 | 5)
         }
       } else if (e.key === 'ArrowLeft' && currentIndex > 0) {
-        setCurrentIndex(prev => prev - 1)
+        setCurrentIndex((prev: number) => prev - 1)
       } else if (e.key === 'ArrowRight' && currentIndex < items.length - 1) {
-        setCurrentIndex(prev => prev + 1)
+        setCurrentIndex((prev: number) => prev + 1)
       }
     }
 
@@ -1072,8 +1094,8 @@ function AmtEvalContent() {
       {/* Bottom Bar */}
       <div className="mt-2 flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
         <div className="flex items-center gap-2">
-          <button onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))} disabled={currentIndex === 0} className="btn btn-secondary px-3 py-1 text-xs">Prev</button>
-          <button onClick={() => setCurrentIndex(prev => Math.min(items.length - 1, prev + 1))} disabled={currentIndex >= items.length - 1} className="btn btn-secondary px-3 py-1 text-xs">Next</button>
+          <button onClick={() => setCurrentIndex((prev: number) => Math.max(0, prev - 1))} disabled={currentIndex === 0} className="btn btn-secondary px-3 py-1 text-xs">Prev</button>
+          <button onClick={() => setCurrentIndex((prev: number) => Math.min(items.length - 1, prev + 1))} disabled={currentIndex >= items.length - 1} className="btn btn-secondary px-3 py-1 text-xs">Next</button>
         </div>
         <div className="flex items-center gap-3">
           {allDone && !isCurrentCompleted && (
