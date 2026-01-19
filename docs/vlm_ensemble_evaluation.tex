@@ -1,0 +1,27 @@
+\section{VLM Ensemble Evaluation}
+\label{sec:vlm-ensemble-eval}
+
+\paragraph{Evaluators.}
+We use two heterogeneous VLMs as independent judges: Google \textbf{Gemini 3.0 Flash Preview} and OpenAI \textbf{GPT-5-mini}.
+Both models receive the source image, the edited image, and the same evaluation prompt.
+Each model returns a JSON report with five 1--5 scores:
+\texttt{edit\_success} (soft erasure), \texttt{skin\_tone} shift, \texttt{race\_drift}, \texttt{gender\_drift}, and \texttt{age\_drift}.
+For the aging prompt (D03), \texttt{age\_drift} is interpreted as accuracy relative to the target age (source age +30 years).
+
+\paragraph{Ensemble aggregation.}
+Gemini serves as the primary evaluator; GPT-5-mini acts as a cross-check.
+If GPT-5-mini fails or returns no usable scores, we keep Gemini alone.
+Otherwise, for each dimension $d$ with Gemini score $g_d$ and GPT-5-mini score $o_d$,
+we apply the rule:
+\[
+\hat{s}_d =
+\begin{cases}
+\mathrm{round}\left(\frac{g_d + o_d}{2}\right) & \text{if } |g_d - o_d| \le 1,\\
+g_d & \text{if } |g_d - o_d| > 1.
+\end{cases}
+\]
+If any dimension has $|g_d - o_d| > 1$, we flag the sample for human review
+(\texttt{needs\_review}) and record the disagreement, while keeping the Gemini score.
+Missing per-dimension values are imputed with the neutral score 3 before aggregation.
+This yields a conservative consensus that reduces idiosyncratic errors while
+prioritizing reliability under large model disagreement.

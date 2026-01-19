@@ -1,0 +1,88 @@
+{
+  "candidates": [
+    {
+      "prompt_id": "D03",
+      "race": "Black",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "D03",
+      "race": "Latino",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "D03",
+      "race": "MiddleEastern",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "D03",
+      "race": "Indian",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "B01",
+      "race": "Black",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "B01",
+      "race": "EastAsian",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "B01",
+      "race": "Indian",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "B01",
+      "race": "Latino",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "B01",
+      "race": "MiddleEastern",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "B01",
+      "race": "SoutheastAsian",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "B02",
+      "race": "Black",
+      "reason": "known_severe_from_pilot"
+    },
+    {
+      "prompt_id": "B02",
+      "race": "EastAsian",
+      "reason": "known_severe_from_pilot"
+    }
+  ],
+  "by_prompt": {
+    "D03": [
+      "Black",
+      "Latino",
+      "MiddleEastern",
+      "Indian"
+    ],
+    "B01": [
+      "Black",
+      "EastAsian",
+      "Indian",
+      "Latino",
+      "MiddleEastern",
+      "SoutheastAsian"
+    ],
+    "B02": [
+      "Black",
+      "EastAsian"
+    ]
+  },
+  "models_analyzed": [
+    "flux",
+    "qwen"
+  ]
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "model": "flux",
+    "key": "B10_Black_Female_50s",
+    "original_id": "exp1_flux_B10_Black_Female_50s"
+  },
+  {
+    "model": "flux",
+    "key": "D02_EastAsian_Male_50s",
+    "original_id": "exp1_flux_D02_EastAsian_Male_50s"
+  },
+  {
+    "model": "flux",
+    "key": "D02_EastAsian_Male_30s",
+    "original_id": "exp1_flux_D02_EastAsian_Male_30s"
+  },
+  {
+    "model": "flux",
+    "key": "B10_SoutheastAsian_Female_20s",
+    "original_id": "exp1_flux_B10_SoutheastAsian_Female_20s"
+  },
+  {
+    "model": "flux",
+    "key": "D02_EastAsian_Female_60s",
+    "original_id": "exp1_flux_D02_EastAsian_Female_60s"
+  },
+  {
+    "model": "flux",
+    "key": "B10_Black_Female_40s",
+    "original_id": "exp1_flux_B10_Black_Female_40s"
+  },
+  {
+    "model": "flux",
+    "key": "B10_MiddleEastern_Female_30s",
+    "original_id": "exp1_flux_B10_MiddleEastern_Female_30s"
+  },
+  {
+    "model": "flux",
+    "key": "B10_SoutheastAsian_Female_50s",
+    "original_id": "exp1_flux_B10_SoutheastAsian_Female_50s"
+  },
+  {
+    "model": "flux",
+    "key": "D02_Indian_Female_50s",
+    "original_id": "exp1_flux_D02_Indian_Female_50s"
+  },
+  {
+    "model": "flux",
+    "key": "B10_White_Male_60s",
+    "original_id": "exp1_flux_B10_White_Male_60s"
+  }
+]

@@ -1,0 +1,45 @@
+% Auto-generated from comprehensive_exp1_analysis.py
+
+% Table 1: Race-wise Metrics Summary
+\begin{table}[h]
+\centering
+\caption{Race-wise Bias Metrics Across Models}
+\label{tab:race-metrics}
+\small
+\begin{tabular}{lccccccccc}
+\toprule
+Race & \multicolumn{3}{c}{FLUX.2} & \multicolumn{3}{c}{Qwen} & \multicolumn{3}{c}{Step1X} \\
+ & IE & SE & SL & IE & SE & SL & IE & SE & SL \\
+\midrule
+White & 9.2 & 5.0 & 47.3 & 2.5 & 3.3 & 45.4 & 5.0 & 20.9 & 40.6 \\
+Black & 20.0 & 7.1 & 78.8 & 7.5 & 4.2 & 73.8 & 15.1 & 23.8 & 72.4 \\
+E.Asian & 17.5 & 6.2 & 55.8 & 9.6 & 2.5 & 54.2 & 7.1 & 25.1 & 51.0 \\
+S.eastAsian & 22.6 & 6.7 & 76.6 & 20.4 & 2.5 & 70.8 & 11.2 & 17.9 & 68.8 \\
+Indian & 19.7 & 6.3 & 79.8 & 12.1 & 2.5 & 77.5 & 15.8 & 21.2 & 65.0 \\
+M.E.ern & 20.4 & 6.2 & 77.5 & 13.3 & 3.3 & 76.7 & 12.1 & 19.6 & 67.5 \\
+Latino & 17.6 & 6.3 & 79.4 & 13.4 & 2.9 & 72.0 & 12.5 & 22.9 & 70.4 \\
+\midrule
+\textbf{Disparity} & 13.4 & 2.1 & 32.6 & 17.9 & 1.7 & 32.1 & 10.8 & 7.2 & 31.8 \\
+\bottomrule
+\end{tabular}
+\vspace{0.5em}
+\\\footnotesize IE: Identity Erasure (\%), SE: Soft Erasure (\%), SL: Skin Lightening (\%)
+\end{table}
+
+% Table 2: Model Comparison Summary
+\begin{table}[h]
+\centering
+\caption{Cross-Model Comparison Summary}
+\label{tab:model-comparison}
+\begin{tabular}{lccc}
+\toprule
+Metric & FLUX & Qwen & Step1X \\
+\midrule
+Identity Erasure (\%) & 18.2 & 11.3 & 11.3 \\
+Soft Erasure (\%) & 6.3 & 3.0 & 21.6 \\
+Skin Lightening (\%) & 70.7 & 67.2 & 62.3 \\
+\midrule
+\quad Disparity & 13.4 & 17.9 & 10.8 \\
+\bottomrule
+\end{tabular}
+\end{table}

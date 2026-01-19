@@ -1,0 +1,462 @@
+[
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_EastAsian_Male_20s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "EastAsian",
+      "gender": "Male",
+      "age": "20s",
+      "filename": "B02_EastAsian_Male_20s_success.png",
+      "sourceImageUrl": "/images/source/EastAsian/EastAsian_Male_20s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_EastAsian_Male_20s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 5
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B01_White_Male_30s",
+      "model": "step1x",
+      "promptId": "B01",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "White",
+      "gender": "Male",
+      "age": "30s",
+      "filename": "B01_White_Male_30s_success.png",
+      "sourceImageUrl": "/images/source/White/White_Male_30s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B01_White_Male_30s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 5
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_MiddleEastern_Female_60s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "MiddleEastern",
+      "gender": "Female",
+      "age": "60s",
+      "filename": "B02_MiddleEastern_Female_60s_success.png",
+      "sourceImageUrl": "/images/source/MiddleEastern/MiddleEastern_Female_60s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_MiddleEastern_Female_60s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 5,
+      "age_drift": 3
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B01_White_Female_50s",
+      "model": "step1x",
+      "promptId": "B01",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "White",
+      "gender": "Female",
+      "age": "50s",
+      "filename": "B01_White_Female_50s_success.png",
+      "sourceImageUrl": "/images/source/White/White_Female_50s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B01_White_Female_50s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 5
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_EastAsian_Female_60s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "EastAsian",
+      "gender": "Female",
+      "age": "60s",
+      "filename": "B02_EastAsian_Female_60s_success.png",
+      "sourceImageUrl": "/images/source/EastAsian/EastAsian_Female_60s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_EastAsian_Female_60s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 5,
+      "age_drift": 4
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B01_Black_Male_40s",
+      "model": "step1x",
+      "promptId": "B01",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "Black",
+      "gender": "Male",
+      "age": "40s",
+      "filename": "B01_Black_Male_40s_success.png",
+      "sourceImageUrl": "/images/source/Black/Black_Male_40s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B01_Black_Male_40s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 1,
+      "skin_tone": 4,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 4
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_Black_Male_60s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "Black",
+      "gender": "Male",
+      "age": "60s",
+      "filename": "B02_Black_Male_60s_success.png",
+      "sourceImageUrl": "/images/source/Black/Black_Male_60s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_Black_Male_60s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 3,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 3
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_Black_Female_50s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "Black",
+      "gender": "Female",
+      "age": "50s",
+      "filename": "B02_Black_Female_50s_success.png",
+      "sourceImageUrl": "/images/source/Black/Black_Female_50s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_Black_Female_50s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 5,
+      "race_drift": 5,
+      "gender_drift": 5,
+      "age_drift": 4
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B01_EastAsian_Male_30s",
+      "model": "step1x",
+      "promptId": "B01",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "EastAsian",
+      "gender": "Male",
+      "age": "30s",
+      "filename": "B01_EastAsian_Male_30s_unchanged.png",
+      "sourceImageUrl": "/images/source/EastAsian/EastAsian_Male_30s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B01_EastAsian_Male_30s_unchanged.png"
+    },
+    "human_scores": {
+      "edit_success": 1,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 4
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_SoutheastAsian_Male_70plus",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "SoutheastAsian",
+      "gender": "Male",
+      "age": "70plus",
+      "filename": "B02_SoutheastAsian_Male_70plus_success.png",
+      "sourceImageUrl": "/images/source/SoutheastAsian/SoutheastAsian_Male_70plus.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_SoutheastAsian_Male_70plus_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 4,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 3
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_Indian_Female_40s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "Indian",
+      "gender": "Female",
+      "age": "40s",
+      "filename": "B02_Indian_Female_40s_success.png",
+      "sourceImageUrl": "/images/source/Indian/Indian_Female_40s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_Indian_Female_40s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 5,
+      "race_drift": 5,
+      "gender_drift": 5,
+      "age_drift": 5
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_SoutheastAsian_Female_40s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "SoutheastAsian",
+      "gender": "Female",
+      "age": "40s",
+      "filename": "B02_SoutheastAsian_Female_40s_success.png",
+      "sourceImageUrl": "/images/source/SoutheastAsian/SoutheastAsian_Female_40s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_SoutheastAsian_Female_40s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 4,
+      "age_drift": 5
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B01_EastAsian_Male_60s",
+      "model": "step1x",
+      "promptId": "B01",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "EastAsian",
+      "gender": "Male",
+      "age": "60s",
+      "filename": "B01_EastAsian_Male_60s_success.png",
+      "sourceImageUrl": "/images/source/EastAsian/EastAsian_Male_60s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B01_EastAsian_Male_60s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 1,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 3
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_EastAsian_Female_40s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "EastAsian",
+      "gender": "Female",
+      "age": "40s",
+      "filename": "B02_EastAsian_Female_40s_success.png",
+      "sourceImageUrl": "/images/source/EastAsian/EastAsian_Female_40s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_EastAsian_Female_40s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 1,
+      "skin_tone": 3,
+      "race_drift": 2,
+      "gender_drift": 5,
+      "age_drift": 3
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_Black_Female_40s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "Black",
+      "gender": "Female",
+      "age": "40s",
+      "filename": "B02_Black_Female_40s_success.png",
+      "sourceImageUrl": "/images/source/Black/Black_Female_40s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_Black_Female_40s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 5,
+      "race_drift": 5,
+      "gender_drift": 5,
+      "age_drift": 5
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_EastAsian_Female_20s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "EastAsian",
+      "gender": "Female",
+      "age": "20s",
+      "filename": "B02_EastAsian_Female_20s_success.png",
+      "sourceImageUrl": "/images/source/EastAsian/EastAsian_Female_20s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_EastAsian_Female_20s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 4,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 5,
+      "age_drift": 5
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B01_MiddleEastern_Male_70plus",
+      "model": "step1x",
+      "promptId": "B01",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "MiddleEastern",
+      "gender": "Male",
+      "age": "70plus",
+      "filename": "B01_MiddleEastern_Male_70plus_success.png",
+      "sourceImageUrl": "/images/source/MiddleEastern/MiddleEastern_Male_70plus.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B01_MiddleEastern_Male_70plus_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 4
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B01_White_Female_30s",
+      "model": "step1x",
+      "promptId": "B01",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "White",
+      "gender": "Female",
+      "age": "30s",
+      "filename": "B01_White_Female_30s_success.png",
+      "sourceImageUrl": "/images/source/White/White_Female_30s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B01_White_Female_30s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 4,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 5
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B01_EastAsian_Female_70plus",
+      "model": "step1x",
+      "promptId": "B01",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "EastAsian",
+      "gender": "Female",
+      "age": "70plus",
+      "filename": "B01_EastAsian_Female_70plus_success.png",
+      "sourceImageUrl": "/images/source/EastAsian/EastAsian_Female_70plus.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B01_EastAsian_Female_70plus_success.png"
+    },
+    "human_scores": {
+      "edit_success": 4,
+      "skin_tone": 3,
+      "race_drift": 1,
+      "gender_drift": 1,
+      "age_drift": 3
+    },
+    "version": "edited"
+  },
+  {
+    "amt_item": {
+      "id": "exp1_step1x_B02_Indian_Female_20s",
+      "model": "step1x",
+      "promptId": "B02",
+      "category": "B",
+      "categoryName": "B_occupation",
+      "race": "Indian",
+      "gender": "Female",
+      "age": "20s",
+      "filename": "B02_Indian_Female_20s_success.png",
+      "sourceImageUrl": "/images/source/Indian/Indian_Female_20s.jpg",
+      "outputImageUrl": "/images/exp1_sampling_b_d/step1x/B_occupation/B02_Indian_Female_20s_success.png"
+    },
+    "human_scores": {
+      "edit_success": 5,
+      "skin_tone": 5,
+      "race_drift": 5,
+      "gender_drift": 5,
+      "age_drift": 5
+    },
+    "version": "edited"
+  }
+]

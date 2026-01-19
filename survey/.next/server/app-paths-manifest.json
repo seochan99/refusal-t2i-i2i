@@ -1,13 +1,18 @@
 {
   "/_global-error/page": "app/_global-error/page.js",
   "/_not-found/page": "app/_not-found/page.js",
+  "/amt/eval/page": "app/amt/eval/page.js",
   "/amt/page": "app/amt/page.js",
-  "/api/evaluation-items/route": "app/api/evaluation-items/route.js",
+  "/amt/review/page": "app/amt/review/page.js",
   "/complete/page": "app/complete/page.js",
   "/consent/page": "app/consent/page.js",
   "/eval/exp1/page": "app/eval/exp1/page.js",
   "/eval/exp2/page": "app/eval/exp2/page.js",
   "/eval/exp3/page": "app/eval/exp3/page.js",
+  "/guide/page": "app/guide/page.js",
   "/page": "app/page.js",
-  "/select/page": "app/select/page.js"
+  "/select/page": "app/select/page.js",
+  "/tasks/eval/page": "app/tasks/eval/page.js",
+  "/tasks/page": "app/tasks/page.js",
+  "/tasks/review/page": "app/tasks/review/page.js"
 }

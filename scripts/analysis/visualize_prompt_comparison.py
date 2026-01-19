@@ -75,7 +75,7 @@ def find_image_files(prompt_id: str, category: str, race: str, gender: str, age:
     cat_dir = RESULTS_DIR / "by_category" / CATEGORY_MAP[category]
     
     if not cat_dir.exists():
-        return None, None, None
+        return None, None, None, False
     
     # Source image
     source_path = find_source_image(race, gender, age)
