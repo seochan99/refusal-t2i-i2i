@@ -246,7 +246,7 @@ function CompletionContent() {
                 <div className="flex justify-between">
                   <span>Tasks Completed:</span>
                   <span style={{ color: 'var(--text-secondary)' }}>
-                    {tasksCompletedCount} / {AMT_UNIFIED_CONFIG.maxTasksPerUser}
+                    {tasksCompletedCount} / {isProlific ? 1 : AMT_UNIFIED_CONFIG.maxTasksPerUser}
                   </span>
                 </div>
               )}
