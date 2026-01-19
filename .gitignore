@@ -23,6 +23,9 @@ experiments/evaluation/
 checkpoints/
 logs/*.log
 
+# Large image data - use AWS S3 URLs from JSON files instead
+data/results/
+
 # Claude AI agent files
 .claude/
 CLAUDE.md
@@ -41,6 +44,9 @@ yarn-error.log*
 # Next.js build output
 .next/
 out/
+
+# Survey images (stored in Firebase Storage, not in git)
+survey/public/images/
 
 # Keep dataset images for reproducibility
 # (38MB total - within GitHub limits)
