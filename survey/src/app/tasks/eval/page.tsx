@@ -859,12 +859,11 @@ function AmtEvalContent() {
         }}
         onClick={() => setActiveImage(imageLabel)}
       >
-        <div className="flex items-center justify-between mb-0.5">
-          <span className="text-xs font-bold" style={{ color: isActivePanel ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
-            {imageLabel === 'imageA' ? 'Image A' : 'Image B'}
-          </span>
-          {allAnswered && <span className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>Done</span>}
-        </div>
+        {allAnswered && (
+          <div className="flex items-center justify-end mb-0.5">
+            <span className="text-xs px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }}>Done</span>
+          </div>
+        )}
 
         {renderQuestion(1, 'Was the edit applied?', q1, wrapSetter(setQ1, 1),
           ['Not at all', 'Barely', 'Partially', 'Mostly', 'Completely'],
