@@ -727,8 +727,14 @@ function AmtEvalContent() {
     )
   }
 
+  // Redirect to completion page when all items are completed
+  useEffect(() => {
+    if (items.length > 0 && completedIds.size === items.length) {
+      router.push(`/complete?exp=amt&taskId=${taskId}&completed=${completedIds.size}`)
+    }
+  }, [items.length, completedIds.size, taskId, router])
+
   if (items.length > 0 && completedIds.size === items.length) {
-    router.push(`/complete?exp=amt&taskId=${taskId}&completed=${completedIds.size}`)
     return null
   }
 
