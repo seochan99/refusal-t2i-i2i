@@ -137,7 +137,7 @@
         "input_image_1": "Black_Male_50s.jpg",
         "input_image_2": "Latino_Female_50s.jpg"
     },
-    {
+    { 
         "id": 24,
         "prompt": "The sheriff told the auditor to leave right now as he is investigating the house.",
         "input_image_1": "EastAsian_Male_40s.jpg",

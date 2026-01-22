@@ -65,3 +65,36 @@ data/analysis/**/*.png
 Untitled*
 *.tmp
 *.bak
+
+# ========================================
+# Project-specific ignores (added for cleanup)
+# ========================================
+
+# Firebase export files (sensitive data)
+firebase_*_backup.json
+firebase_*_template.json
+firebase_*_manual.json
+firebase_amt_main_workers.json
+firebase_user_progress_export.json
+firebase_survey_responses_export.json
+users.json
+
+# 500sample data files (moved to data/final/)
+500sample_*/
+
+# Legacy paper folders (keep only Full_Paper and Appendix)
+paper/IJCAI_ECAI_26_I2I_Bias___Appendix/
+paper/IJCAI__ECAI_26___I2I_Bias_Refusall/
+paper/figures/
+
+# Large analysis outputs
+data/analysis/
+scripts/analysis/*.json
+
+# Experiment pilot/test outputs
+scripts/experiment/pilot/
+scripts/experiment/test/
+
+# Final data folder (large experiment results - use external storage)
+data/final/
+!data/final/README.md

@@ -9,6 +9,7 @@ Firebase에서 export한 amt_evaluations 데이터를 입력으로 받아서
 import json
 import os
 from pathlib import Path
+from collections import defaultdict
 
 def load_amt_sampling_data():
     """AMT 샘플링 데이터 로드"""
@@ -79,10 +80,10 @@ def extract_field_value(field_data):
     return field_data
 
 def extract_human_scores(amt_data, firebase_data):
-    """Firebase 데이터에서 인간 평가 점수 추출 및 AMT 샘플과 매핑"""
+    """Firebase 데이터에서 인간 평가 점수 추출 및 AMT 샘플과 매핑 (다중 평가 지원)"""
 
-    # Firebase 데이터를 originalItemId -> scores로 매핑
-    firebase_scores = {}
+    # Firebase 데이터를 originalItemId -> list of evaluations로 매핑
+    firebase_scores = defaultdict(list)
 
     for doc in firebase_data:
         fields = doc.get('fields', {})
@@ -91,6 +92,10 @@ def extract_human_scores(amt_data, firebase_data):
         original_item_id = extract_field_value(fields.get('originalItemId', {}))
 
         if original_item_id:
+            # 작업자 정보 추출
+            worker_id = extract_field_value(fields.get('userId', {}))
+            task_id = extract_field_value(fields.get('taskId', {}))
+
             # edited 버전 점수 추출
             edited_scores = {
                 'edit_success': extract_field_value(fields.get('edited_edit_success', {})),
@@ -109,23 +114,30 @@ def extract_human_scores(amt_data, firebase_data):
                 'age_drift': extract_field_value(fields.get('preserved_age_drift', {}))
             }
 
-            firebase_scores[original_item_id] = {
+            # 평가 정보 저장
+            evaluation = {
+                'worker_id': worker_id,
+                'task_id': task_id,
                 'edited': edited_scores,
                 'preserved': preserved_scores
             }
 
-    # AMT 샘플과 인간 평가 점수 매핑
+            firebase_scores[original_item_id].append(evaluation)
+
+    # AMT 샘플과 인간 평가 점수 매핑 (다중 평가 지원)
     human_scores = []
 
     for amt_item in amt_data['items']:
         amt_id = amt_item['id']  # exp1_flux_B01_Latino_Female_40s
-        human_score_data = firebase_scores.get(amt_id)
+        evaluations = firebase_scores.get(amt_id, [])
 
-        if human_score_data:
-            # edited 버전 (AMT에서 평가한 버전)
+        # 각 평가를 개별적으로 저장 (다중 평가 지원)
+        for evaluation in evaluations:
             result_item = {
                 'amt_item': amt_item,
-                'human_scores': human_score_data['edited'],
+                'human_scores': evaluation['edited'],  # AMT는 edited 버전 평가
+                'worker_id': evaluation['worker_id'],
+                'task_id': evaluation['task_id'],
                 'version': 'edited'
             }
             human_scores.append(result_item)

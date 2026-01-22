@@ -56,9 +56,11 @@ service cloud.firestore {
     // AMT Task slots (for race-condition-free task assignment)
     match /amt_task_slots/{slotId} {
       allow read: if request.auth != null;
-      // Allow claiming: user can only set claimedBy to their own UID
+      // Allow claiming: user can set claimedBy to their own UID
+      // Allow releasing: user can clear their own slot (existing claimedBy matches their UID)
       allow update: if request.auth != null
-        && request.resource.data.claimedBy == request.auth.uid;
+        && (request.resource.data.claimedBy == request.auth.uid
+            || resource.data.claimedBy == request.auth.uid);
     }
   }
 }

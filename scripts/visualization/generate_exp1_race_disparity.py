@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
+# Set publication style (matching vlm_human_figure)
 plt.rcParams.update({
-    'font.family': 'serif',
+    'font.family': 'sans-serif',
     'font.size': 10,
     'axes.labelsize': 11,
     'axes.titlesize': 12,
@@ -16,7 +17,7 @@ plt.rcParams.update({
     'figure.dpi': 300,
 })
 
-OUTPUT_DIR = Path("/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/paper/I2I_Bias_Refusal/assets")
+OUTPUT_DIR = Path("/Users/chan/IJCAI26/I2I-T2I-Bias-Refusal/paper/IJCAI__ECAI_26___I2I_Bias_Refusall/assets")
 
 # ACTUAL VLM EVALUATION DATA from demographic_metrics.json files
 races = ['White', 'E Asian', 'SE Asian', 'Latino', 'Black', 'Mid East', 'Indian']
@@ -38,44 +39,48 @@ x = np.arange(len(races))
 width = 0.25
 
 # Left: Skin Lightening
-bars1 = ax1.bar(x - width, skin_lighter_flux, width, label='FLUX.2-dev', color='#e74c3c', alpha=0.85)
-bars2 = ax1.bar(x, skin_lighter_step1x, width, label='Step1X-Edit', color='#3498db', alpha=0.85)
-bars3 = ax1.bar(x + width, skin_lighter_qwen, width, label='Qwen-Edit', color='#2ecc71', alpha=0.85)
+bars1 = ax1.bar(x - width, skin_lighter_flux, width, label='FLUX.2-dev',
+                color='#e74c3c', edgecolor='black', linewidth=0.5)
+bars2 = ax1.bar(x, skin_lighter_step1x, width, label='Step1X-Edit',
+                color='#3498db', edgecolor='black', linewidth=0.5)
+bars3 = ax1.bar(x + width, skin_lighter_qwen, width, label='Qwen-Edit',
+                color='#2ecc71', edgecolor='black', linewidth=0.5)
 
 ax1.set_ylabel('Skin Lightening Rate (%)')
 ax1.set_xlabel('Racial Group (Source Image)')
 ax1.set_xticks(x)
 ax1.set_xticklabels(races, rotation=15, ha='right')
-ax1.legend(loc='upper left', fontsize=8)
+ax1.legend(loc='upper left', framealpha=0.9)
 ax1.set_ylim(0, 100)
 ax1.spines['top'].set_visible(False)
 ax1.spines['right'].set_visible(False)
-ax1.yaxis.grid(True, linestyle='--', alpha=0.3)
-ax1.set_title('(a) Skin Lightening by Race', fontweight='bold')
+ax1.set_title('(a) Skin Lightening by Race', fontweight='bold', fontsize=11)
 
 # Add disparity annotation
-ax1.axhline(y=47, color='gray', linestyle='--', alpha=0.5, linewidth=1)
-ax1.text(5.5, 50, 'White baseline\n(47%)', fontsize=7, ha='center', color='gray')
+ax1.axhline(y=47, color='gray', linestyle='--', linewidth=1, alpha=0.7)
+ax1.text(6.3, 49, 'White baseline', fontsize=8, color='gray', ha='right')
 
 # Right: Race Drift
-bars4 = ax2.bar(x - width, race_drift_flux, width, label='FLUX.2-dev', color='#e74c3c', alpha=0.85)
-bars5 = ax2.bar(x, race_drift_step1x, width, label='Step1X-Edit', color='#3498db', alpha=0.85)
-bars6 = ax2.bar(x + width, race_drift_qwen, width, label='Qwen-Edit', color='#2ecc71', alpha=0.85)
+bars4 = ax2.bar(x - width, race_drift_flux, width, label='FLUX.2-dev',
+                color='#e74c3c', edgecolor='black', linewidth=0.5)
+bars5 = ax2.bar(x, race_drift_step1x, width, label='Step1X-Edit',
+                color='#3498db', edgecolor='black', linewidth=0.5)
+bars6 = ax2.bar(x + width, race_drift_qwen, width, label='Qwen-Edit',
+                color='#2ecc71', edgecolor='black', linewidth=0.5)
 
-ax2.set_ylabel('Race Drift Rate (score $\geq$ 3) (%)')
+ax2.set_ylabel('Race Drift Rate (score $\\geq$ 3) (%)')
 ax2.set_xlabel('Racial Group (Source Image)')
 ax2.set_xticks(x)
 ax2.set_xticklabels(races, rotation=15, ha='right')
-ax2.legend(loc='upper left', fontsize=8)
+ax2.legend(loc='upper left', framealpha=0.9)
 ax2.set_ylim(0, 25)
 ax2.spines['top'].set_visible(False)
 ax2.spines['right'].set_visible(False)
-ax2.yaxis.grid(True, linestyle='--', alpha=0.3)
-ax2.set_title('(b) Race Drift by Race', fontweight='bold')
+ax2.set_title('(b) Race Drift by Race', fontweight='bold', fontsize=11)
 
 # Add disparity annotation
-ax2.axhline(y=1.3, color='gray', linestyle='--', alpha=0.5, linewidth=1)
-ax2.text(5.5, 3, 'White baseline\n(1.3%)', fontsize=7, ha='center', color='gray')
+ax2.axhline(y=1.3, color='gray', linestyle='--', linewidth=1, alpha=0.7)
+ax2.text(6.3, 2.5, 'White baseline', fontsize=8, color='gray', ha='right')
 
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / "exp1_race_disparity.pdf", bbox_inches='tight')
